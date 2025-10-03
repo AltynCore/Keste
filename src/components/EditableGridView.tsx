@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
-import { Table, Copy, Cut, ClipboardPaste, Trash2 } from 'lucide-react';
+import { Table, Copy, Scissors, ClipboardPaste, Trash2 } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
 import { cn } from '@/lib/utils';
@@ -272,7 +272,7 @@ export function EditableGridView({
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
           <ContextMenuItem onClick={onCut} disabled={!onCut}>
-            <Cut className="mr-2 h-4 w-4" />
+            <Scissors className="mr-2 h-4 w-4" />
             Cut
             <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
           </ContextMenuItem>
