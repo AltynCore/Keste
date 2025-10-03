@@ -1,9 +1,17 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
-import { Table } from 'lucide-react';
+import { Table, Copy, Cut, ClipboardPaste, Trash2 } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
 import { cn } from '@/lib/utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from './ui/context-menu';
 
 interface EditableGridViewProps {
   sheet: SheetModel;
@@ -16,6 +24,10 @@ interface EditableGridViewProps {
   onNavigate: (direction: NavigationDirection) => void;
   getCellValue: (position: CellPosition) => string;
   getCellDisplayValue: (position: CellPosition) => string | number;
+  onCopy?: () => void;
+  onCut?: () => void;
+  onPaste?: () => void;
+  onDelete?: () => void;
 }
 
 export function EditableGridView({
@@ -29,6 +41,10 @@ export function EditableGridView({
   onNavigate,
   getCellValue,
   getCellDisplayValue,
+  onCopy,
+  onCut,
+  onPaste,
+  onDelete,
 }: EditableGridViewProps) {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
 
@@ -236,23 +252,50 @@ export function EditableGridView({
     }
 
     return (
-      <div
-        style={customStyle}
-        onClick={handleClick}
-        onDoubleClick={handleDoubleClick}
-        className={cn(
-          "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-colors cursor-cell",
-          isSelected
-            ? "bg-primary/10 border-2 border-primary -m-[1px] z-20"
-            : "hover:bg-accent/30",
-          hasFormula && "text-primary font-mono text-xs"
-        )}
-        title={String(displayValue)}
-      >
-        {displayValue}
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            style={customStyle}
+            onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
+            className={cn(
+              "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-150 cursor-cell",
+              isSelected
+                ? "bg-primary/10 border-2 border-primary -m-[1px] z-20 ring-1 ring-primary/20"
+                : "hover:bg-accent/40 hover:scale-[1.01]",
+              hasFormula && "text-primary font-mono text-xs"
+            )}
+            title={String(displayValue)}
+          >
+            {displayValue}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent className="w-48">
+          <ContextMenuItem onClick={onCut} disabled={!onCut}>
+            <Cut className="mr-2 h-4 w-4" />
+            Cut
+            <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onCopy} disabled={!onCopy}>
+            <Copy className="mr-2 h-4 w-4" />
+            Copy
+            <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={onPaste} disabled={!onPaste}>
+            <ClipboardPaste className="mr-2 h-4 w-4" />
+            Paste
+            <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={onDelete} disabled={!onDelete}>
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete
+            <ContextMenuShortcut>Del</ContextMenuShortcut>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     );
-  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
+  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate, onCopy, onCut, onPaste, onDelete]);
 
   return (
     <div id="grid-container" className="h-full bg-background">

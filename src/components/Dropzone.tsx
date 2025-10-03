@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
+import { Upload, FileSpreadsheet, Loader2, Plus, Sparkles, Lock, Zap } from 'lucide-react';
 import { readXlsxToModel } from '../core-ts/read_xlsx';
 import type { WorkbookModel } from '../core-ts/types';
 import { Card, CardContent } from './ui/card';
@@ -14,6 +14,7 @@ interface DropzoneProps {
 }
 
 function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
+  const [isDragging, setIsDragging] = useState(false);
   const handleFile = useCallback(
     async (file: File) => {
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.kst')) {
@@ -39,6 +40,7 @@ function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
     (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       e.stopPropagation();
+      setIsDragging(false);
 
       const file = e.dataTransfer.files[0];
       if (file) {
@@ -51,6 +53,13 @@ function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
   }, []);
 
   const handleFileInput = useCallback(
@@ -115,24 +124,34 @@ function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <Card className="border-2 hover:border-primary transition-all hover:shadow-lg cursor-pointer"
-                onClick={handleNewSpreadsheet}>
-            <CardContent className="p-8 text-center">
-              <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Plus className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">New Spreadsheet</h3>
-              <p className="text-sm text-muted-foreground">
-                Start with a blank workbook
-              </p>
-            </CardContent>
-          </Card>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Card className="border-2 hover:border-primary transition-all hover:shadow-lg cursor-pointer group"
+                  onClick={handleNewSpreadsheet}>
+              <CardContent className="p-8 text-center">
+                <motion.div
+                  className="bg-gradient-to-br from-emerald-400/20 to-teal-500/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:from-emerald-400/30 group-hover:to-teal-500/30 transition-all"
+                  whileHover={{ rotate: 5 }}
+                >
+                  <Plus className="w-8 h-8 text-primary" />
+                </motion.div>
+                <h3 className="font-semibold text-lg mb-2">New Spreadsheet</h3>
+                <p className="text-sm text-muted-foreground">
+                  Start with a blank workbook
+                </p>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-          <Card className="border-2 border-dashed border-slate-300 hover:border-primary transition-colors">
+          <Card className={`border-2 border-dashed transition-all duration-200 ${
+            isDragging
+              ? 'border-primary bg-primary/5 scale-105 shadow-xl'
+              : 'border-slate-300 hover:border-primary/50'
+          }`}>
             <CardContent
               className="p-8"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
             >
               {loading ? (
                 <motion.div

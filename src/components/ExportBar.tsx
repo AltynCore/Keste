@@ -1,6 +1,8 @@
 import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import KeyboardShortcutsDialog from './KeyboardShortcutsDialog';
 
 interface ExportBarProps {
   onExportSqlite: () => void;
@@ -50,6 +52,7 @@ function ExportBar({
   currentAlign = 'left',
 }: ExportBarProps) {
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="border-b bg-card shadow-sm">
       {/* Excel-like Ribbon Header */}
       <div className="px-3 py-1 flex items-center justify-between border-b">
@@ -67,33 +70,45 @@ function ExportBar({
               <Home className="h-3 w-3 mr-1" />
               Home
             </Button>
+            <KeyboardShortcutsDialog />
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={onExportSqlite}
-            disabled={exporting}
-            variant="ghost"
-            size="sm"
-            className="h-7 px-3 text-xs"
-          >
-            {exporting ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            ) : (
-              <Save className="h-3 w-3 mr-1" />
-            )}
-            Save
-          </Button>
-          <Button
-            onClick={onExportSql}
-            disabled={exporting}
-            variant="ghost"
-            size="sm"
-            className="h-7 px-3 text-xs"
-          >
-            <Download className="h-3 w-3 mr-1" />
-            Export
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onExportSqlite}
+                disabled={exporting}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-3 text-xs"
+              >
+                {exporting ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3 mr-1" />
+                )}
+                Save
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Save as .kst file (Ctrl+S)</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={onExportSql}
+                disabled={exporting}
+                variant="ghost"
+                size="sm"
+                className="h-7 px-3 text-xs"
+              >
+                <Download className="h-3 w-3 mr-1" />
+                Export
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Export to Excel .xlsx</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -131,36 +146,65 @@ function ExportBar({
 
         {/* Font Group */}
         <div className="flex items-center gap-1">
-          <Button
-            variant={isBold ? "secondary" : "ghost"}
-            size="icon"
-            className="h-7 w-7"
-            onClick={onBold}
-            disabled={!onBold}
-            title="Bold (Ctrl+B)"
-          >
-            <Bold className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={isItalic ? "secondary" : "ghost"}
-            size="icon"
-            className="h-7 w-7"
-            onClick={onItalic}
-            disabled={!onItalic}
-            title="Italic (Ctrl+I)"
-          >
-            <Italic className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={isUnderline ? "secondary" : "ghost"}
-            size="icon"
-            className="h-7 w-7"
-            onClick={onUnderline}
-            disabled={!onUnderline}
-            title="Underline (Ctrl+U)"
-          >
-            <Underline className="h-3.5 w-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isBold ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={onBold}
+                disabled={!onBold}
+              >
+                <Bold className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Bold</div>
+                <div className="text-xs opacity-70">Ctrl+B</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isItalic ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={onItalic}
+                disabled={!onItalic}
+              >
+                <Italic className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Italic</div>
+                <div className="text-xs opacity-70">Ctrl+I</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={isUnderline ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={onUnderline}
+                disabled={!onUnderline}
+              >
+                <Underline className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Underline</div>
+                <div className="text-xs opacity-70">Ctrl+U</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="h-6 w-px bg-border" />
@@ -241,6 +285,7 @@ function ExportBar({
         )}
       </div>
     </div>
+    </TooltipProvider>
   );
 }
 

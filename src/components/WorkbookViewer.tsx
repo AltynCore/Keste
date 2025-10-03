@@ -344,6 +344,18 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
               onNavigate={handleNavigate}
               getCellValue={getCellValue}
               getCellDisplayValue={getCellDisplayValue}
+              onCopy={handleCopy}
+              onCut={handleCut}
+              onPaste={handlePaste}
+              onDelete={() => {
+                if (selectedCell) {
+                  setCellValue(selectedCell, '');
+                  toast({
+                    title: "Deleted",
+                    description: "Cell content cleared",
+                  });
+                }
+              }}
             />
           )}
         </motion.div>
