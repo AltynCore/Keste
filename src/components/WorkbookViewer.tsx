@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { motion } from 'framer-motion';
 import EditableGridView from './EditableGridView';
@@ -55,6 +55,14 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const currentSheet = workbook.sheets[selectedSheetIndex];
 
   const handleCellClick = (position: CellPosition) => {
+    // If clicking on the same cell that is already selected, don't stop editing
+    if (editingState.isEditing && 
+        editingState.position?.row === position.row && 
+        editingState.position?.col === position.col && 
+        editingState.position?.sheetId === position.sheetId) {
+      return;
+    }
+    
     setSelectedCell(position);
     if (editingState.isEditing) {
       stopEditing(true);
@@ -237,7 +245,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
 
       // Choose save location
       const outPath = await invoke<string>('choose_save_file', {
-        defaultName: `${workbook.name || 'workbook'}.xlsx`,
+        defaultName: 'workbook.xlsx',
       });
 
       if (!outPath) {

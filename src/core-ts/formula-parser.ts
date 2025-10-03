@@ -271,7 +271,7 @@ function evaluateRange(range: CellRange, getCellValue: CellGetter): (number | st
  * Built-in Excel functions
  */
 const FUNCTIONS: Record<string, (args: any[], getCellValue: CellGetter) => number | string | boolean> = {
-  SUM: (args, getCellValue) => {
+  SUM: (args, _getCellValue) => {
     let sum = 0;
     for (const arg of args) {
       if (Array.isArray(arg)) {
@@ -283,7 +283,7 @@ const FUNCTIONS: Record<string, (args: any[], getCellValue: CellGetter) => numbe
     return sum;
   },
 
-  AVERAGE: (args, getCellValue) => {
+  AVERAGE: (args, _getCellValue) => {
     let sum = 0;
     let count = 0;
     for (const arg of args) {

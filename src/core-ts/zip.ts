@@ -18,7 +18,6 @@ export class ZipReader {
 
     // Read central directory
     const cdOffset = this.view.getUint32(eocdOffset + 16, true);
-    const cdSize = this.view.getUint32(eocdOffset + 12, true);
     const entryCount = this.view.getUint16(eocdOffset + 10, true);
 
     let offset = cdOffset;
@@ -77,11 +76,11 @@ export class ZipReader {
     return -1;
   }
 
-  private async inflateData(compData: Uint8Array, uncompSize: number): Promise<Uint8Array> {
+  private async inflateData(compData: Uint8Array, _uncompSize: number): Promise<Uint8Array> {
     // Use browser's DecompressionStream API
     const ds = new DecompressionStream('deflate-raw');
     const writer = ds.writable.getWriter();
-    writer.write(compData);
+    writer.write(compData as BufferSource);
     writer.close();
 
     const reader = ds.readable.getReader();

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, FileSpreadsheet, Loader2, Plus, Sparkles, Lock, Zap } from 'lucide-react';
+import { Upload, FileSpreadsheet, Loader2, Plus } from 'lucide-react';
 import { readXlsxToModel } from '../core-ts/read_xlsx';
 import type { WorkbookModel } from '../core-ts/types';
 import { Card, CardContent } from './ui/card';

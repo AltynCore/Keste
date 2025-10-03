@@ -134,7 +134,7 @@ CREATE INDEX ix_cell_formula ON cell(formula) WHERE formula IS NOT NULL;
 
     // Insert cells in batches
     const cellBatch: string[] = [];
-    for (const [ref, cell] of sheet.cells) {
+    for (const [, cell] of sheet.cells) {
       const valueNumeric = cell.type === 'n' && typeof cell.value === 'number' ? cell.value : 'NULL';
       const valueText = cell.type === 's' || cell.type === 'str' || cell.type === 'inlineStr' || cell.type === 'e' ? `'${escapeSQL(String(cell.value))}'` : 'NULL';
       const valueBool = cell.type === 'b' ? (cell.value ? 1 : 0) : 'NULL';

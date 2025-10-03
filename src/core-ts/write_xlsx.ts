@@ -231,12 +231,9 @@ function generateWorksheet(sheet: SheetModel, sharedStrings: Map<string, number>
 
     cells.forEach(cell => {
       const cellRef = `${colNumberToLetter(cell.col - 1)}${cell.row}`;
-      let cellType = '';
-      let cellValue = '';
 
       if (cell.formula) {
         // Formula cell
-        cellType = '';
         xml += `      <c r="${cellRef}">\n`;
         xml += `        <f>${escapeXml(cell.formula)}</f>\n`;
         if (cell.value !== null && cell.value !== undefined) {
@@ -358,7 +355,7 @@ export async function createXlsxBlob(workbook: WorkbookModel): Promise<Blob> {
       if (err) {
         reject(err);
       } else {
-        resolve(new Blob([data], {
+        resolve(new Blob([data as BlobPart], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         }));
       }

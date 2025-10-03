@@ -33,7 +33,7 @@ function GridView({ sheet }: GridViewProps) {
     let maxCol = 0;
     const data: Map<string, string> = new Map();
 
-    for (const [ref, cell] of sheet.cells) {
+    for (const [, cell] of sheet.cells) {
       maxRow = Math.max(maxRow, cell.row);
       maxCol = Math.max(maxCol, cell.col);
 

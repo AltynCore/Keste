@@ -1,6 +1,6 @@
 import { ZipReader } from './zip';
 import { XmlSaxParser } from './xml_sax';
-import type { WorkbookModel, SheetModel, CellData, CellXfsStyle, MergedRange, DefinedName } from './types';
+import type { WorkbookModel, SheetModel, CellData, CellXfsStyle, DefinedName } from './types';
 
 export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookModel> {
   const zip = new ZipReader(buffer);

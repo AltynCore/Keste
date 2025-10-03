@@ -121,10 +121,6 @@ export function EditableGridView({
     return result;
   };
 
-  const getCellRef = (row: number, col: number) => {
-    return `${colNumToLetter(col)}${row}`;
-  };
-
   const Cell = useCallback(({ columnIndex, rowIndex, style }: any) => {
     // Header cells
     if (rowIndex === 0 && columnIndex === 0) {
@@ -187,11 +183,15 @@ export function EditableGridView({
     const cellData = sheet.cells.get(cellKey);
     const cellStyle = cellData?.style || {};
 
-    const handleClick = () => {
+    const handleClick = (e: React.MouseEvent) => {
+      // Don't interfere with double click detection
+      if (e.detail === 2) return;
       onCellClick(position);
     };
 
-    const handleDoubleClick = () => {
+    const handleDoubleClick = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
       onCellDoubleClick(position);
     };
 

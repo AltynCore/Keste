@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { WorkbookModel, SheetModel, CellData, CellStyle } from '../core-ts/types';
+import type { WorkbookModel, CellData, CellStyle } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
 import { evaluateFormula } from '../core-ts/formula-parser';
 
@@ -46,8 +46,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     // If it's a formula, evaluate it
     if (cell.formula) {
       // Create a cell getter for formula evaluation
-      const getCellForFormula = (row: number, col: number): string | number | boolean | null => {
-        const cellPos: CellPosition = { row, col, sheetId: position.sheetId };
+      const getCellForFormula = (row: number, col: number): string | number | null => {
         const cellKey = `${row}-${col}`;
         const targetCell = sheet.cells.get(cellKey);
 
@@ -58,6 +57,11 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
           return targetCell.value?.toString() || '';
         }
 
+        // Convert boolean to number for formulas
+        if (typeof targetCell.value === 'boolean') {
+          return targetCell.value ? 1 : 0;
+        }
+
         return targetCell.value ?? null;
       };
 
@@ -65,6 +69,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
 
       if (result === '#ERROR!') return '#ERROR!';
       if (result === null) return '';
+      if (typeof result === 'boolean') return result ? 'TRUE' : 'FALSE';
 
       return result;
     }
