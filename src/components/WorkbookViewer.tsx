@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { motion } from 'framer-motion';
-import SheetNav from './SheetNav';
 import EditableGridView from './EditableGridView';
 import ExportBar from './ExportBar';
+import SheetTabs from './SheetTabs';
+import { FormulaBar } from './FormulaBar';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { useToast } from './ui/use-toast';
 import { useSpreadsheetEditor } from '../hooks/useSpreadsheetEditor';
@@ -264,8 +265,18 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     }
   };
 
+  // Helper to get cell reference (A1, B2, etc.)
+  const getCellRef = (row: number, col: number) => {
+    const colLetter = String.fromCharCode(65 + ((col - 1) % 26));
+    return `${colLetter}${row}`;
+  };
+
+  const currentCellRef = selectedCell ? getCellRef(selectedCell.row, selectedCell.col) : '';
+  const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';
+
   return (
     <div className="flex flex-col h-full bg-background">
+      {/* Excel-like Ribbon */}
       <ExportBar
         onExportSqlite={handleSaveKst}
         onExportSql={handleExportExcel}
@@ -277,18 +288,28 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         canUndo={canUndo}
         canRedo={canRedo}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <SheetNav
-          sheets={workbook.sheets}
-          selectedIndex={selectedSheetIndex}
-          onSelectSheet={setSelectedSheetIndex}
-        />
+
+      {/* Formula Bar - Excel position */}
+      <FormulaBar
+        cellReference={currentCellRef}
+        value={editingState.isEditing ? editingState.value : currentCellValue}
+        isEditing={editingState.isEditing}
+        onChange={updateEditingValue}
+        onFocus={() => {
+          if (selectedCell) {
+            startEditing(selectedCell);
+          }
+        }}
+      />
+
+      {/* Main Grid Area */}
+      <div className="flex-1 overflow-hidden">
         <motion.div
           key={selectedSheetIndex}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex-1 overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.2 }}
+          className="h-full"
         >
           {currentSheet && (
             <EditableGridView
@@ -306,6 +327,13 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           )}
         </motion.div>
       </div>
+
+      {/* Sheet Tabs - Excel position at bottom */}
+      <SheetTabs
+        sheets={workbook.sheets}
+        selectedIndex={selectedSheetIndex}
+        onSelectSheet={setSelectedSheetIndex}
+      />
     </div>
   );
 }

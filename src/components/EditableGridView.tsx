@@ -3,8 +3,6 @@ import { FixedSizeGrid as Grid } from 'react-window';
 import { Table } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
-import { Card } from './ui/card';
-import { FormulaBar } from './FormulaBar';
 import { cn } from '@/lib/utils';
 
 interface EditableGridViewProps {
@@ -233,52 +231,19 @@ export function EditableGridView({
     );
   }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
 
-  const currentCellRef = selectedCell ? getCellRef(selectedCell.row, selectedCell.col) : 'A1';
-  const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';
-
   return (
-    <div className="flex flex-col h-full bg-background">
-      {/* Formula Bar */}
-      <FormulaBar
-        cellReference={currentCellRef}
-        value={editingState.isEditing ? editingState.value : currentCellValue}
-        isEditing={editingState.isEditing}
-        onChange={onEditingValueChange}
-        onFocus={() => {
-          if (selectedCell) {
-            onCellDoubleClick(selectedCell);
-          }
-        }}
-      />
-
-      {/* Sheet Info */}
-      <div className="px-4 py-2 border-b bg-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-base">{sheet.name}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {sheet.cells.size.toLocaleString()} cells · {maxRow.toLocaleString()} rows × {maxCol} columns
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid */}
-      <div id="grid-container" className="flex-1 p-4">
-        <Card className="h-full overflow-hidden shadow-sm">
-          <Grid
-            columnCount={maxCol + 1}
-            columnWidth={120}
-            height={dimensions.height - 200}
-            rowCount={maxRow + 1}
-            rowHeight={32}
-            width={dimensions.width - 32}
-            className="font-sans focus:outline-none"
-          >
-            {Cell}
-          </Grid>
-        </Card>
-      </div>
+    <div id="grid-container" className="h-full bg-background">
+      <Grid
+        columnCount={maxCol + 1}
+        columnWidth={120}
+        height={dimensions.height}
+        rowCount={maxRow + 1}
+        rowHeight={32}
+        width={dimensions.width}
+        className="font-sans focus:outline-none"
+      >
+        {Cell}
+      </Grid>
     </div>
   );
 }
