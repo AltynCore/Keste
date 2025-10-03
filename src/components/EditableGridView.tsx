@@ -17,6 +17,7 @@ interface EditableGridViewProps {
   onStopEditing: (save: boolean) => void;
   onNavigate: (direction: NavigationDirection) => void;
   getCellValue: (position: CellPosition) => string;
+  getCellDisplayValue: (position: CellPosition) => string | number;
 }
 
 export function EditableGridView({
@@ -29,6 +30,7 @@ export function EditableGridView({
   onStopEditing,
   onNavigate,
   getCellValue,
+  getCellDisplayValue,
 }: EditableGridViewProps) {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
 
@@ -162,9 +164,9 @@ export function EditableGridView({
       editingState.position?.col === columnIndex &&
       editingState.position?.sheetId === sheet.id;
 
-    const value = getCellValue(position);
-    const displayValue = isEditing ? editingState.value : value;
-    const hasFormula = displayValue.startsWith('=');
+    const rawValue = getCellValue(position);
+    const displayValue = isEditing ? editingState.value : getCellDisplayValue(position);
+    const hasFormula = rawValue.startsWith('=');
 
     const handleClick = () => {
       onCellClick(position);
@@ -224,12 +226,12 @@ export function EditableGridView({
             : "bg-background hover:bg-accent/30",
           hasFormula && "text-primary font-mono text-xs"
         )}
-        title={value}
+        title={String(displayValue)}
       >
-        {value}
+        {displayValue}
       </div>
     );
-  }, [sheet.id, selectedCell, editingState, getCellValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
+  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
 
   const currentCellRef = selectedCell ? getCellRef(selectedCell.row, selectedCell.col) : 'A1';
   const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';

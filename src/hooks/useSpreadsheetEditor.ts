@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import type { WorkbookModel, SheetModel, CellData } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
+import { evaluateFormula } from '../core-ts/formula-parser';
 
 export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   const [workbook, setWorkbook] = useState<WorkbookModel>(initialWorkbook);
@@ -19,7 +20,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     maxSize: 100,
   });
 
-  // Get cell value
+  // Get raw cell value (for editing)
   const getCellValue = useCallback((position: CellPosition): string => {
     const sheet = workbook.sheets.find(s => s.id === position.sheetId);
     if (!sheet) return '';
@@ -29,6 +30,45 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
 
     if (!cell) return '';
     if (cell.formula) return `=${cell.formula}`;
+    return cell.value?.toString() || '';
+  }, [workbook]);
+
+  // Get evaluated cell value (for display and formula calculations)
+  const getCellDisplayValue = useCallback((position: CellPosition): string | number => {
+    const sheet = workbook.sheets.find(s => s.id === position.sheetId);
+    if (!sheet) return '';
+
+    const cellKey = `${position.row}-${position.col}`;
+    const cell = sheet.cells.get(cellKey);
+
+    if (!cell) return '';
+
+    // If it's a formula, evaluate it
+    if (cell.formula) {
+      // Create a cell getter for formula evaluation
+      const getCellForFormula = (row: number, col: number): string | number | boolean | null => {
+        const cellPos: CellPosition = { row, col, sheetId: position.sheetId };
+        const cellKey = `${row}-${col}`;
+        const targetCell = sheet.cells.get(cellKey);
+
+        if (!targetCell) return null;
+
+        // Prevent circular references by returning raw value for now
+        if (targetCell.formula) {
+          return targetCell.value?.toString() || '';
+        }
+
+        return targetCell.value ?? null;
+      };
+
+      const result = evaluateFormula(`=${cell.formula}`, getCellForFormula);
+
+      if (result === '#ERROR!') return '#ERROR!';
+      if (result === null) return '';
+
+      return result;
+    }
+
     return cell.value?.toString() || '';
   }, [workbook]);
 
@@ -188,6 +228,15 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     return value;
   }, [selectedCell, getCellValue]);
 
+  // Cut
+  const cut = useCallback(() => {
+    if (!selectedCell) return null;
+
+    const value = getCellValue(selectedCell);
+    setCellValue(selectedCell, '');
+    return value;
+  }, [selectedCell, getCellValue, setCellValue]);
+
   // Paste
   const paste = useCallback((value: string) => {
     if (!selectedCell) return;
@@ -204,6 +253,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     selection,
     setSelection,
     getCellValue,
+    getCellDisplayValue,
     setCellValue,
     startEditing,
     stopEditing,
@@ -212,6 +262,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     undo,
     redo,
     copy,
+    cut,
     paste,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,

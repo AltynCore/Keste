@@ -28,6 +28,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     selectedCell,
     setSelectedCell,
     getCellValue,
+    getCellDisplayValue,
     setCellValue,
     startEditing,
     stopEditing,
@@ -36,6 +37,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     undo,
     redo,
     copy,
+    cut,
     paste,
     canUndo,
     canRedo,
@@ -70,6 +72,21 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         });
       } catch (err) {
         console.error('Failed to copy:', err);
+      }
+    }
+  };
+
+  const handleCut = async () => {
+    const value = cut();
+    if (value !== null) {
+      try {
+        await navigator.clipboard.writeText(value);
+        toast({
+          title: "Cut",
+          description: "Cell value cut to clipboard",
+        });
+      } catch (err) {
+        console.error('Failed to cut:', err);
       }
     }
   };
@@ -129,6 +146,13 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         if (!editingState.isEditing) {
           e.preventDefault();
           handleCopy();
+        }
+      }
+      // Ctrl/Cmd + X for cut
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'x') {
+        if (!editingState.isEditing) {
+          e.preventDefault();
+          handleCut();
         }
       }
       // Ctrl/Cmd + V for paste
@@ -277,6 +301,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
               onStopEditing={stopEditing}
               onNavigate={handleNavigate}
               getCellValue={getCellValue}
+              getCellDisplayValue={getCellDisplayValue}
             />
           )}
         </motion.div>
