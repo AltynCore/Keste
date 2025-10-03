@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import type { WorkbookModel, SheetModel, CellData } from '../core-ts/types';
+import type { WorkbookModel, SheetModel, CellData, CellStyle } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
 import { evaluateFormula } from '../core-ts/formula-parser';
 
@@ -244,6 +244,90 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     setCellValue(selectedCell, value);
   }, [selectedCell, setCellValue]);
 
+  // Apply style to selected cell
+  const applyCellStyle = useCallback((styleUpdates: Partial<CellStyle>) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const cellKey = `${selectedCell.row}-${selectedCell.col}`;
+      const cells = new Map(sheet.cells);
+
+      const existingCell = cells.get(cellKey) || {
+        row: selectedCell.row,
+        col: selectedCell.col,
+        type: 's' as const,
+        value: '',
+      };
+
+      const updatedCell: CellData = {
+        ...existingCell,
+        style: {
+          ...existingCell.style,
+          ...styleUpdates,
+        },
+      };
+
+      cells.set(cellKey, updatedCell);
+      sheet.cells = cells;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Get current cell style
+  const getCellStyle = useCallback((): CellStyle => {
+    if (!selectedCell) return {};
+
+    const sheet = workbook.sheets.find(s => s.id === selectedCell.sheetId);
+    if (!sheet) return {};
+
+    const cellKey = `${selectedCell.row}-${selectedCell.col}`;
+    const cell = sheet.cells.get(cellKey);
+
+    return cell?.style || {};
+  }, [selectedCell, workbook]);
+
+  // Toggle bold
+  const toggleBold = useCallback(() => {
+    const currentStyle = getCellStyle();
+    applyCellStyle({ fontBold: !currentStyle.fontBold });
+  }, [getCellStyle, applyCellStyle]);
+
+  // Toggle italic
+  const toggleItalic = useCallback(() => {
+    const currentStyle = getCellStyle();
+    applyCellStyle({ fontItalic: !currentStyle.fontItalic });
+  }, [getCellStyle, applyCellStyle]);
+
+  // Toggle underline
+  const toggleUnderline = useCallback(() => {
+    const currentStyle = getCellStyle();
+    applyCellStyle({ fontUnderline: !currentStyle.fontUnderline });
+  }, [getCellStyle, applyCellStyle]);
+
+  // Set alignment
+  const setAlignment = useCallback((align: 'left' | 'center' | 'right') => {
+    applyCellStyle({ horizontalAlign: align });
+  }, [applyCellStyle]);
+
+  // Set font color
+  const setFontColor = useCallback((color: string) => {
+    applyCellStyle({ fontColor: color });
+  }, [applyCellStyle]);
+
+  // Set background color
+  const setBackgroundColor = useCallback((color: string) => {
+    applyCellStyle({ backgroundColor: color });
+  }, [applyCellStyle]);
+
   return {
     workbook,
     setWorkbook,
@@ -254,7 +338,9 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     setSelection,
     getCellValue,
     getCellDisplayValue,
+    getCellStyle,
     setCellValue,
+    applyCellStyle,
     startEditing,
     stopEditing,
     updateEditingValue,
@@ -264,6 +350,12 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     copy,
     cut,
     paste,
+    toggleBold,
+    toggleItalic,
+    toggleUnderline,
+    setAlignment,
+    setFontColor,
+    setBackgroundColor,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
   };

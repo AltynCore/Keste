@@ -166,6 +166,11 @@ export function EditableGridView({
     const displayValue = isEditing ? editingState.value : getCellDisplayValue(position);
     const hasFormula = rawValue.startsWith('=');
 
+    // Get cell data for styling
+    const cellKey = `${position.row}-${position.col}`;
+    const cellData = sheet.cells.get(cellKey);
+    const cellStyle = cellData?.style || {};
+
     const handleClick = () => {
       onCellClick(position);
     };
@@ -193,10 +198,28 @@ export function EditableGridView({
       }
     };
 
+    // Build custom style object
+    const customStyle: React.CSSProperties = {
+      ...style,
+      fontFamily: cellStyle.fontName,
+      fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : undefined,
+      fontWeight: cellStyle.fontBold ? 'bold' : undefined,
+      fontStyle: cellStyle.fontItalic ? 'italic' : undefined,
+      textDecoration: cellStyle.fontUnderline ? 'underline' : undefined,
+      color: cellStyle.fontColor,
+      backgroundColor: cellStyle.backgroundColor,
+      textAlign: cellStyle.horizontalAlign,
+      display: cellStyle.verticalAlign ? 'flex' : undefined,
+      alignItems: cellStyle.verticalAlign === 'top' ? 'flex-start'
+        : cellStyle.verticalAlign === 'bottom' ? 'flex-end'
+        : cellStyle.verticalAlign === 'middle' ? 'center'
+        : undefined,
+    };
+
     if (isEditing) {
       return (
         <div
-          style={style}
+          style={customStyle}
           className="border-2 border-primary bg-background z-30 relative"
         >
           <input
@@ -214,14 +237,14 @@ export function EditableGridView({
 
     return (
       <div
-        style={style}
+        style={customStyle}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         className={cn(
           "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-colors cursor-cell",
           isSelected
             ? "bg-primary/10 border-2 border-primary -m-[1px] z-20"
-            : "bg-background hover:bg-accent/30",
+            : "hover:bg-accent/30",
           hasFormula && "text-primary font-mono text-xs"
         )}
         title={String(displayValue)}

@@ -25,6 +25,31 @@ export interface CellData {
   value: string | number | boolean | null;
   formula?: string;
   styleId?: number;
+  style?: CellStyle;
+}
+
+export interface CellStyle {
+  // Font
+  fontName?: string;
+  fontSize?: number;
+  fontBold?: boolean;
+  fontItalic?: boolean;
+  fontUnderline?: boolean;
+  fontColor?: string;
+
+  // Fill
+  backgroundColor?: string;
+
+  // Alignment
+  horizontalAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
+
+  // Border
+  borderTop?: boolean;
+  borderRight?: boolean;
+  borderBottom?: boolean;
+  borderLeft?: boolean;
+  borderColor?: string;
 }
 
 export interface CellXfsStyle {

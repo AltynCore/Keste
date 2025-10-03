@@ -6,6 +6,7 @@ import ExportBar from './ExportBar';
 import SheetTabs from './SheetTabs';
 import { FormulaBar } from './FormulaBar';
 import { generateSqlDump } from '../core-ts/sql_dump';
+import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
 import { useSpreadsheetEditor } from '../hooks/useSpreadsheetEditor';
 import type { WorkbookModel } from '../core-ts/types';
@@ -30,6 +31,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     setSelectedCell,
     getCellValue,
     getCellDisplayValue,
+    getCellStyle,
     setCellValue,
     startEditing,
     stopEditing,
@@ -40,6 +42,12 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     copy,
     cut,
     paste,
+    toggleBold,
+    toggleItalic,
+    toggleUnderline,
+    setAlignment,
+    setFontColor,
+    setBackgroundColor,
     canUndo,
     canRedo,
   } = useSpreadsheetEditor(initialWorkbook);
@@ -222,24 +230,23 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     setProgress(10);
 
     try {
-      // For now, export as SQL dump
-      // TODO: Implement proper XLSX export
-      let sqlDump = '';
+      // Generate XLSX blob
       setProgress(30);
-
-      for await (const chunk of generateSqlDump(workbook)) {
-        sqlDump += chunk;
-      }
-
+      const blob = await createXlsxBlob(workbook);
       setProgress(70);
 
       // Choose save location
       const outPath = await invoke<string>('choose_save_file', {
-        defaultName: 'export.xlsx',
+        defaultName: `${workbook.name || 'workbook'}.xlsx`,
       });
 
-      // Write as text file (temporary solution)
-      const blob = new Blob([sqlDump], { type: 'text/plain' });
+      if (!outPath) {
+        setExporting(false);
+        setProgress(0);
+        return;
+      }
+
+      // Download the file
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -251,9 +258,10 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
 
       toast({
         title: "Export successful!",
-        description: "Excel file exported (Note: Full XLSX support coming soon)",
+        description: `Excel file exported: ${(blob.size / 1024).toFixed(2)} KB`,
       });
     } catch (err) {
+      console.error('Export error:', err);
       toast({
         variant: "destructive",
         title: "Export failed",
@@ -273,6 +281,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
 
   const currentCellRef = selectedCell ? getCellRef(selectedCell.row, selectedCell.col) : '';
   const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';
+  const currentCellStyle = getCellStyle();
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -287,6 +296,18 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
+        onBold={toggleBold}
+        onItalic={toggleItalic}
+        onUnderline={toggleUnderline}
+        onAlignLeft={() => setAlignment('left')}
+        onAlignCenter={() => setAlignment('center')}
+        onAlignRight={() => setAlignment('right')}
+        onFontColor={setFontColor}
+        onBackgroundColor={setBackgroundColor}
+        isBold={currentCellStyle.fontBold}
+        isItalic={currentCellStyle.fontItalic}
+        isUnderline={currentCellStyle.fontUnderline}
+        currentAlign={currentCellStyle.horizontalAlign || 'left'}
       />
 
       {/* Formula Bar - Excel position */}

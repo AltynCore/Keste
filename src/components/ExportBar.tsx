@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 
@@ -12,6 +12,18 @@ interface ExportBarProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onBold?: () => void;
+  onItalic?: () => void;
+  onUnderline?: () => void;
+  onAlignLeft?: () => void;
+  onAlignCenter?: () => void;
+  onAlignRight?: () => void;
+  onBackgroundColor?: (color: string) => void;
+  onFontColor?: (color: string) => void;
+  isBold?: boolean;
+  isItalic?: boolean;
+  isUnderline?: boolean;
+  currentAlign?: 'left' | 'center' | 'right';
 }
 
 function ExportBar({
@@ -24,6 +36,18 @@ function ExportBar({
   onRedo,
   canUndo = false,
   canRedo = false,
+  onBold,
+  onItalic,
+  onUnderline,
+  onAlignLeft,
+  onAlignCenter,
+  onAlignRight,
+  onBackgroundColor,
+  onFontColor,
+  isBold = false,
+  isItalic = false,
+  isUnderline = false,
+  currentAlign = 'left',
 }: ExportBarProps) {
   return (
     <div className="border-b bg-card shadow-sm">
@@ -107,23 +131,101 @@ function ExportBar({
 
         {/* Font Group */}
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+          <Button
+            variant={isBold ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onBold}
+            disabled={!onBold}
+            title="Bold (Ctrl+B)"
+          >
             <Bold className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+          <Button
+            variant={isItalic ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onItalic}
+            disabled={!onItalic}
+            title="Italic (Ctrl+I)"
+          >
             <Italic className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+          <Button
+            variant={isUnderline ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onUnderline}
+            disabled={!onUnderline}
+            title="Underline (Ctrl+U)"
+          >
             <Underline className="h-3.5 w-3.5" />
           </Button>
         </div>
 
         <div className="h-6 w-px bg-border" />
 
+        {/* Color Group */}
+        <div className="flex items-center gap-1">
+          <div className="relative">
+            <input
+              type="color"
+              className="absolute opacity-0 w-7 h-7 cursor-pointer"
+              onChange={(e) => onFontColor?.(e.target.value)}
+              disabled={!onFontColor}
+              title="Font Color"
+            />
+            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onFontColor}>
+              <Type className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="relative">
+            <input
+              type="color"
+              className="absolute opacity-0 w-7 h-7 cursor-pointer"
+              onChange={(e) => onBackgroundColor?.(e.target.value)}
+              disabled={!onBackgroundColor}
+              title="Background Color"
+            />
+            <Button variant="ghost" size="icon" className="h-7 w-7" disabled={!onBackgroundColor}>
+              <Palette className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
         {/* Alignment Group */}
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+          <Button
+            variant={currentAlign === 'left' ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onAlignLeft}
+            disabled={!onAlignLeft}
+            title="Align Left"
+          >
             <AlignLeft className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={currentAlign === 'center' ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onAlignCenter}
+            disabled={!onAlignCenter}
+            title="Align Center"
+          >
+            <AlignCenter className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={currentAlign === 'right' ? "secondary" : "ghost"}
+            size="icon"
+            className="h-7 w-7"
+            onClick={onAlignRight}
+            disabled={!onAlignRight}
+            title="Align Right"
+          >
+            <AlignRight className="h-3.5 w-3.5" />
           </Button>
         </div>
 
