@@ -4,6 +4,24 @@ Welcome to the Keste documentation! This directory contains all project document
 
 ---
 
+## ✅ FORMULA ENGINE FIXED
+
+**Formula Engine Investigation - October 5, 2025 - RESOLVED**
+
+**Problem:** Формулы возвращали неправильные результаты (0 вместо суммы)  
+**Root Cause:** Несоответствие индексации между workbook (1-based) и HyperFormula (0-based)  
+**Solution:** Добавлена конвертация индексов `hfRow = row - 1`
+
+### Documentation:
+- 📋 [**Debug Summary**](FORMULA_DEBUG_SUMMARY.md) - Полное решение
+- 🔬 [Investigation Report](FORMULA_ENGINE_INVESTIGATION.md) - Техническая документация
+- 🧪 [Testing Instructions](FORMULA_TESTING_INSTRUCTIONS.md) - Как тестировалось
+
+**Status:** ✅ RESOLVED  
+**Result:** Все 380+ функций Excel теперь работают корректно!
+
+---
+
 ## 📚 Quick Links
 
 | Document | Description | Audience |

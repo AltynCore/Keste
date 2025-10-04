@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { WorkbookModel, CellData, CellStyle } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
-import { evaluateFormula } from '../core-ts/formula-parser';
+import { HyperFormula, SimpleCellAddress } from 'hyperformula';
 
 export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   const [workbook, setWorkbook] = useState<WorkbookModel>(initialWorkbook);
@@ -20,10 +20,69 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     maxSize: 100,
   });
 
+  // ⚡ HyperFormula instance for professional formula evaluation
+  const hfRef = useRef<HyperFormula | null>(null);
+  
+  // Initialize HyperFormula
+  if (!hfRef.current) {
+    hfRef.current = HyperFormula.buildEmpty({
+      licenseKey: 'gpl-v3',
+      useArrayArithmetic: true,
+      useColumnIndex: true,
+    });
+    
+    // Add sheet
+    hfRef.current.addSheet('Sheet1');
+  }
+
   // ✨ Optimized: Get raw cell value (for editing)
   // Using ref to avoid recreating on every workbook change
   const workbookRef = useRef(workbook);
   workbookRef.current = workbook;
+
+  // 🔄 Helper: Sync entire sheet to HyperFormula
+  const syncSheetToHyperFormula = useCallback(() => {
+    const hf = hfRef.current;
+    if (!hf) return;
+
+    const currentSheet = workbookRef.current.sheets[0];
+    if (!currentSheet) return;
+
+    // Clear HyperFormula first
+    const sheetId = hf.getSheetId('Sheet1');
+    if (sheetId !== null && sheetId !== undefined) {
+      try {
+        hf.clearSheet(sheetId);
+      } catch (e) {
+        // Sheet might not exist yet
+      }
+    }
+
+    // Sync all cells to HyperFormula
+    hf.batch(() => {
+      currentSheet.cells.forEach((cellData, key) => {
+        const [row, col] = key.split('-').map(Number);
+        
+        // ⚡ Convert 1-based to 0-based indexing for HyperFormula
+        // Our workbook: A1 = row:1, col:1 (1-based)
+        // HyperFormula: A1 = row:0, col:0 (0-based)
+        const hfRow = row - 1;
+        const hfCol = col - 1;
+        const address: SimpleCellAddress = { sheet: 0, col: hfCol, row: hfRow };
+        
+        if (cellData.formula) {
+          hf.setCellContents(address, `=${cellData.formula}`);
+        } else if (cellData.value !== null && cellData.value !== undefined) {
+          hf.setCellContents(address, cellData.value);
+        }
+      });
+    });
+  }, []);
+
+  // Initial sync on mount
+  useEffect(() => {
+    syncSheetToHyperFormula();
+  }, []); // Run once on mount
 
   const getCellValue = useCallback((position: CellPosition): string => {
     const sheet = workbookRef.current.sheets.find(s => s.id === position.sheetId);
@@ -47,39 +106,39 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
 
     if (!cell) return '';
 
-    // If it's a formula, evaluate it
+    // If it's a formula, evaluate it using HyperFormula
     if (cell.formula) {
-      // Create a cell getter for formula evaluation
-      const getCellForFormula = (row: number, col: number): string | number | null => {
-        const cellKey = `${row}-${col}`;
-        const targetCell = sheet.cells.get(cellKey);
+      try {
+        // Sync all cells before formula evaluation
+        syncSheetToHyperFormula();
 
-        if (!targetCell) return null;
+        const hf = hfRef.current;
+        if (!hf) return '#ERROR!';
 
-        // Prevent circular references by returning raw value for now
-        if (targetCell.formula) {
-          return targetCell.value?.toString() || '';
+        // Convert 1-based to 0-based indexing for HyperFormula
+        const hfRow = position.row - 1;
+        const hfCol = position.col - 1;
+        const address: SimpleCellAddress = { sheet: 0, col: hfCol, row: hfRow };
+
+        // Get calculated value from HyperFormula
+        const result = hf.getCellValue(address);
+
+        // Handle errors
+        if (result === null || result === undefined) return '';
+        if (typeof result === 'object' && result !== null && 'type' in result) {
+          return `#${result.type}!`;
         }
+        if (typeof result === 'boolean') return result ? 'TRUE' : 'FALSE';
 
-        // Convert boolean to number for formulas
-        if (typeof targetCell.value === 'boolean') {
-          return targetCell.value ? 1 : 0;
-        }
-
-        return targetCell.value ?? null;
-      };
-
-      const result = evaluateFormula(`=${cell.formula}`, getCellForFormula);
-
-      if (result === '#ERROR!') return '#ERROR!';
-      if (result === null) return '';
-      if (typeof result === 'boolean') return result ? 'TRUE' : 'FALSE';
-
-      return result;
+        return result;
+      } catch (error) {
+        console.error('Formula evaluation error:', error);
+        return '#ERROR!';
+      }
     }
 
     return cell.value?.toString() || '';
-  }, []); // ✨ No dependencies - stable reference
+  }, [syncSheetToHyperFormula]); // Need syncSheetToHyperFormula for formula evaluation
 
   // Set cell value
   const setCellValue = useCallback((position: CellPosition, value: string) => {
@@ -103,7 +162,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
           row: position.row,
           col: position.col,
           type: 'str',
-          value: value, // For now, store formula as value
+          value: value,
           formula: formula,
         };
         cells.set(cellKey, cellData);
@@ -112,11 +171,12 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
         cells.delete(cellKey);
       } else {
         // Regular value
+        const isNumber = !isNaN(Number(value));
         const cellData: CellData = {
           row: position.row,
           col: position.col,
-          type: isNaN(Number(value)) ? 's' : 'n',
-          value: isNaN(Number(value)) ? value : Number(value),
+          type: isNumber ? 'n' : 's',
+          value: isNumber ? Number(value) : value,
         };
         cells.set(cellKey, cellData);
       }
@@ -124,6 +184,8 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
       sheet.cells = cells;
       newWorkbook.sheets = [...newWorkbook.sheets];
       newWorkbook.sheets[sheetIndex] = sheet;
+
+      // Note: HyperFormula will be synced automatically before next formula evaluation
 
       // Add to undo stack
       const edit: CellEdit = {

@@ -278,6 +278,14 @@ function extractNumbers(value: FormulaValue): number[] {
   if (typeof value === 'number') {
     return [value];
   }
+  if (typeof value === 'string') {
+    // ⚡ Convert string numbers to actual numbers
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+      return [num];
+    }
+    return []; // Ignore non-numeric strings
+  }
   if (Array.isArray(value)) {
     return value.flatMap(extractNumbers);
   }
