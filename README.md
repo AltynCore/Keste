@@ -83,6 +83,19 @@ Keste is a **desktop spreadsheet editor** that uses SQLite as its storage format
 
 ---
 
+## 📖 Documentation
+
+**Complete documentation is available in [docs/](docs/README.md):**
+
+- 📘 [Setup Guide](docs/SETUP.md) - Installation & development setup
+- 🏗️ [Architecture](docs/ARCHITECTURE.md) - System design & technical details
+- 🔧 [Technical Debt](docs/TECHNICAL_DEBT.md) - Known issues & improvements
+- 🤝 [Contributing](docs/CONTRIBUTING.md) - How to contribute
+- 📋 [Changelog](docs/CHANGELOG.md) - Version history
+- 🚀 [Product Roadmap](docs/product/PRD-2.md) - Future features
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -92,7 +105,7 @@ Keste is a **desktop spreadsheet editor** that uses SQLite as its storage format
 - **Platform-specific requirements**:
   - **Windows**: Visual Studio Build Tools
   - **macOS**: Xcode Command Line Tools
-  - **Linux**: See [Tauri prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites)
+  - **Linux**: See [docs/SETUP.md](docs/SETUP.md)
 
 ### Installation
 
@@ -283,7 +296,7 @@ This project is licensed under the MIT License.
 
 - 🐛 **Bug Reports**: Open an issue
 - 💡 **Feature Requests**: Start a discussion
-- 📖 **Documentation**: See [SETUP.md](SETUP.md)
+- 📖 **Documentation**: See [docs/](docs/README.md)
 
 ---
 
