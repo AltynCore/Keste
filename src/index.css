@@ -66,3 +66,81 @@
 #root {
   @apply w-screen h-screen overflow-hidden;
 }
+
+/* ⚡ Performance optimizations for instant UI response */
+@layer utilities {
+  /* GPU acceleration for grid cells */
+  .cursor-cell {
+    will-change: background-color;
+    transform: translateZ(0);
+    /* Force GPU compositing layer */
+    -webkit-transform: translateZ(0);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+  }
+
+  /* Instant hover response - no transitions */
+  .instant-hover {
+    transition: none !important;
+  }
+
+  /* Optimize pointer events for better selection performance */
+  .optimized-selection {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    pointer-events: auto; /* Ensure clicks register immediately */
+  }
+
+  /* Prevent repaints during scrolling */
+  .grid-container {
+    contain: layout style paint;
+  }
+}
+
+/* Optimize cell rendering for 60fps+ */
+[role="gridcell"] {
+  contain: layout style;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ⚡ CRITICAL: Remove ALL transitions from grid interactions */
+.border-primary,
+.bg-primary\/10,
+.ring-2,
+.ring-primary\/20,
+.hover\:bg-accent\/30,
+[class*="border-"],
+[class*="bg-primary"],
+[class*="ring-"] {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* ⚡ Force instant click response - no delay */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Optimize grid cells for instant visual feedback */
+.cursor-cell,
+[role="gridcell"],
+.border-r.border-b {
+  /* Prevent paint on hover/click */
+  isolation: isolate;
+  /* Force composite layer for fast repainting */
+  transform: translateZ(0);
+  will-change: background-color, border-color;
+}
+
+/* ⚡ Remove hover delay completely */
+@media (hover: hover) {
+  .hover\:bg-accent\/30:hover {
+    transition: none !important;
+    /* Instant background change */
+    background-color: hsl(var(--accent) / 0.3);
+  }
+}

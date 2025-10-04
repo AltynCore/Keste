@@ -1,17 +1,9 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
-import { Table, Copy, Scissors, ClipboardPaste, Trash2 } from 'lucide-react';
+import { Table } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
 import { cn } from '@/lib/utils';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuTrigger,
-} from './ui/context-menu';
 
 interface EditableGridViewProps {
   sheet: SheetModel;
@@ -24,10 +16,7 @@ interface EditableGridViewProps {
   onNavigate: (direction: NavigationDirection) => void;
   getCellValue: (position: CellPosition) => string;
   getCellDisplayValue: (position: CellPosition) => string | number;
-  onCopy?: () => void;
-  onCut?: () => void;
-  onPaste?: () => void;
-  onDelete?: () => void;
+  // ⚡ Context menu handlers removed for performance - use keyboard shortcuts
 }
 
 export function EditableGridView({
@@ -41,10 +30,6 @@ export function EditableGridView({
   onNavigate,
   getCellValue,
   getCellDisplayValue,
-  onCopy,
-  onCut,
-  onPaste,
-  onDelete,
 }: EditableGridViewProps) {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
 
@@ -121,6 +106,7 @@ export function EditableGridView({
     return result;
   };
 
+  // ⚡ ULTRA-OPTIMIZED Cell renderer - NO ContextMenu, minimal deps
   const Cell = useCallback(({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
     // Header cells
     if (rowIndex === 0 && columnIndex === 0) {
@@ -183,37 +169,6 @@ export function EditableGridView({
     const cellData = sheet.cells.get(cellKey);
     const cellStyle = cellData?.style || {};
 
-    const handleClick = (e: React.MouseEvent) => {
-      // Don't interfere with double click detection
-      if (e.detail === 2) return;
-      onCellClick(position);
-    };
-
-    const handleDoubleClick = (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onCellDoubleClick(position);
-    };
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      onEditingValueChange(e.target.value);
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        onStopEditing(true);
-        onNavigate('down');
-      } else if (e.key === 'Escape') {
-        e.preventDefault();
-        onStopEditing(false);
-      } else if (e.key === 'Tab') {
-        e.preventDefault();
-        onStopEditing(true);
-        onNavigate(e.shiftKey ? 'left' : 'right');
-      }
-    };
-
     // Build custom style object
     const customStyle: React.CSSProperties = {
       ...style,
@@ -242,8 +197,21 @@ export function EditableGridView({
             autoFocus
             type="text"
             value={displayValue}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => onEditingValueChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onStopEditing(true);
+                onNavigate('down');
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onStopEditing(false);
+              } else if (e.key === 'Tab') {
+                e.preventDefault();
+                onStopEditing(true);
+                onNavigate(e.shiftKey ? 'left' : 'right');
+              }
+            }}
             onBlur={() => onStopEditing(true)}
             className="w-full h-full px-2 py-1 text-sm outline-none bg-transparent"
           />
@@ -251,51 +219,37 @@ export function EditableGridView({
       );
     }
 
+    // ⚡ NO ContextMenu - use global keyboard shortcuts instead!
     return (
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <div
-            style={customStyle}
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
-            className={cn(
-              "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap transition-all duration-150 cursor-cell",
-              isSelected
-                ? "bg-primary/10 border-2 border-primary -m-[1px] z-20 ring-1 ring-primary/20"
-                : "hover:bg-accent/40 hover:scale-[1.01]",
-              hasFormula && "text-primary font-mono text-xs"
-            )}
-            title={String(displayValue)}
-          >
-            {displayValue}
-          </div>
-        </ContextMenuTrigger>
-        <ContextMenuContent className="w-48">
-          <ContextMenuItem onClick={onCut} disabled={!onCut}>
-            <Scissors className="mr-2 h-4 w-4" />
-            Cut
-            <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem onClick={onCopy} disabled={!onCopy}>
-            <Copy className="mr-2 h-4 w-4" />
-            Copy
-            <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuItem onClick={onPaste} disabled={!onPaste}>
-            <ClipboardPaste className="mr-2 h-4 w-4" />
-            Paste
-            <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={onDelete} disabled={!onDelete}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-            <ContextMenuShortcut>Del</ContextMenuShortcut>
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
+      <div
+        style={customStyle}
+        onClick={(e) => {
+          if (e.detail !== 2) onCellClick(position);
+        }}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onCellDoubleClick(position);
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onCellClick(position); // Select on right-click
+          // Context menu can be added globally if needed
+        }}
+        className={cn(
+          // ⚡ INSTANT response - no transitions, no context menu overhead
+          "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-cell select-none",
+          isSelected
+            ? "bg-primary/10 border-2 border-primary -m-[1px] z-20 ring-2 ring-primary/20"
+            : "hover:bg-accent/30",
+          hasFormula && "text-primary font-mono text-xs"
+        )}
+        title={String(displayValue)}
+      >
+        {displayValue}
+      </div>
     );
-  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate, onCopy, onCut, onPaste, onDelete]);
+  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
 
   return (
     <div id="grid-container" className="h-full bg-background">

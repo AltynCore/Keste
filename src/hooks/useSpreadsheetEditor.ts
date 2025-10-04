@@ -20,9 +20,13 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     maxSize: 100,
   });
 
-  // Get raw cell value (for editing)
+  // ✨ Optimized: Get raw cell value (for editing)
+  // Using ref to avoid recreating on every workbook change
+  const workbookRef = useRef(workbook);
+  workbookRef.current = workbook;
+
   const getCellValue = useCallback((position: CellPosition): string => {
-    const sheet = workbook.sheets.find(s => s.id === position.sheetId);
+    const sheet = workbookRef.current.sheets.find(s => s.id === position.sheetId);
     if (!sheet) return '';
 
     const cellKey = `${position.row}-${position.col}`;
@@ -31,11 +35,11 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     if (!cell) return '';
     if (cell.formula) return `=${cell.formula}`;
     return cell.value?.toString() || '';
-  }, [workbook]);
+  }, []); // ✨ No dependencies - stable reference
 
-  // Get evaluated cell value (for display and formula calculations)
+  // ✨ Optimized: Get evaluated cell value (for display and formula calculations)
   const getCellDisplayValue = useCallback((position: CellPosition): string | number => {
-    const sheet = workbook.sheets.find(s => s.id === position.sheetId);
+    const sheet = workbookRef.current.sheets.find(s => s.id === position.sheetId);
     if (!sheet) return '';
 
     const cellKey = `${position.row}-${position.col}`;
@@ -75,7 +79,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     }
 
     return cell.value?.toString() || '';
-  }, [workbook]);
+  }, []); // ✨ No dependencies - stable reference
 
   // Set cell value
   const setCellValue = useCallback((position: CellPosition, value: string) => {
@@ -140,13 +144,14 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   }, [getCellValue]);
 
   // Start editing
-  const startEditing = useCallback((position: CellPosition) => {
-    const value = getCellValue(position);
+  const startEditing = useCallback((position: CellPosition, initialValue?: string) => {
+    const currentValue = getCellValue(position);
+    const value = initialValue !== undefined ? initialValue : currentValue;
     setEditingState({
       isEditing: true,
       position,
       value,
-      originalValue: value,
+      originalValue: currentValue, // Keep original for undo
     });
     setSelectedCell(position);
   }, [getCellValue]);

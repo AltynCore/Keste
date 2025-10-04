@@ -14,7 +14,8 @@ interface EditableCellProps {
 }
 
 /**
- * Optimized EditableCell with React.memo for instant UI response
+ * Optimized EditableCell with React.memo
+ * Only re-renders when props actually change
  */
 const EditableCellComponent = ({
   value,
@@ -69,9 +70,10 @@ const EditableCellComponent = ({
     <div
       style={style}
       className={cn(
-        // ✨ Removed transition-colors for INSTANT response
-        // ✨ Pure CSS :hover for better performance
-        "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-cell hover:bg-accent/30",
+        // Removed transition-colors for instant response
+        "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-cell",
+        // Use CSS :hover instead of JS state for better performance
+        "hover:bg-accent/30",
         isSelected
           ? "bg-primary/10 border-2 border-primary ring-2 ring-primary/20"
           : "bg-background",
@@ -85,7 +87,8 @@ const EditableCellComponent = ({
   );
 };
 
-// ✨ Custom comparison for optimal re-rendering
+// Custom comparison function for memo
+// Only re-render if these props actually changed
 const areEqual = (prevProps: EditableCellProps, nextProps: EditableCellProps) => {
   return (
     prevProps.value === nextProps.value &&
@@ -93,6 +96,7 @@ const areEqual = (prevProps: EditableCellProps, nextProps: EditableCellProps) =>
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isFormula === nextProps.isFormula &&
     prevProps.cellKey === nextProps.cellKey
+    // Don't compare functions - they're stable with useCallback
   );
 };
 

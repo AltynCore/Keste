@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { motion } from 'framer-motion';
 import EditableGridView from './EditableGridView';
@@ -152,9 +152,39 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     }
   };
 
-  // Keyboard shortcuts
-  useState(() => {
+  // Keyboard shortcuts - FIXED: useEffect instead of useState!
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ⚡ Auto-start editing on text/number input (Excel-like behavior)
+      if (
+        selectedCell &&
+        !editingState.isEditing &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        e.key.length === 1 && // Single character (not Enter, Escape, etc.)
+        !e.key.match(/^F\d+$/) // Not F1-F12
+      ) {
+        e.preventDefault();
+        // Start editing with the typed character
+        startEditing(selectedCell, e.key);
+        return;
+      }
+
+      // Delete key clears cell
+      if (e.key === 'Delete' && selectedCell && !editingState.isEditing) {
+        e.preventDefault();
+        setCellValue(selectedCell, '');
+        return;
+      }
+
+      // Backspace starts editing with empty value
+      if (e.key === 'Backspace' && selectedCell && !editingState.isEditing) {
+        e.preventDefault();
+        startEditing(selectedCell, '');
+        return;
+      }
+
       // Ctrl/Cmd + F for Find
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
@@ -203,7 +233,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  });
+  }, [selectedCell, editingState, startEditing, setCellValue, handleUndo, handleRedo, handleCopy, handleCut, handlePaste]);
 
   const handleSaveKst = async () => {
     setExporting(true);
@@ -375,18 +405,6 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
               onNavigate={handleNavigate}
               getCellValue={getCellValue}
               getCellDisplayValue={getCellDisplayValue}
-              onCopy={handleCopy}
-              onCut={handleCut}
-              onPaste={handlePaste}
-              onDelete={() => {
-                if (selectedCell) {
-                  setCellValue(selectedCell, '');
-                  toast({
-                    title: "Deleted",
-                    description: "Cell content cleared",
-                  });
-                }
-              }}
             />
           )}
         </motion.div>
