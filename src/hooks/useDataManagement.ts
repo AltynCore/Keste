@@ -140,7 +140,7 @@ export function useDataManagement(_sheetId: string) {
       for (const filter of state.filters) {
         const cellKey = `${row}-${filter.col}`;
         const cell = cells.get(cellKey);
-        const value = cell?.value;
+        const value = cell?.value ?? null;
 
         if (!matchesFilter(value, filter.condition, cell)) {
           continue rowLoop; // Skip this row
@@ -248,7 +248,7 @@ export function useDataManagement(_sheetId: string) {
     return state.validations.find(v => v.row === row && v.col === col) || null;
   }, [state.validations]);
 
-  const validateCell = useCallback((row: number, col: number, value: any): boolean => {
+  const validateCell = useCallback((row: number, col: number, value: string | number | boolean | null): boolean => {
     const validation = state.validations.find(v => v.row === row && v.col === col);
     if (!validation) return true;
 
@@ -265,6 +265,7 @@ export function useDataManagement(_sheetId: string) {
       }
 
       case 'date': {
+        if (typeof value !== 'string' && typeof value !== 'number') return false;
         const date = new Date(value);
         if (isNaN(date.getTime())) return false;
         if (validation.rule.min && date < validation.rule.min) return false;
@@ -306,7 +307,7 @@ export function useDataManagement(_sheetId: string) {
   const getConditionalFormat = useCallback((
     row: number,
     col: number,
-    value: any
+    value: string | number | boolean | null
   ): Partial<CellData['style']> | null => {
     // Sort by priority
     const rules = [...state.conditionalFormats].sort((a, b) => a.priority - b.priority);
@@ -383,7 +384,7 @@ export function useDataManagement(_sheetId: string) {
 
 // Helper functions
 function matchesFilter(
-  value: any,
+  value: string | number | boolean | null,
   condition: FilterCondition,
   cell?: CellData
 ): boolean {

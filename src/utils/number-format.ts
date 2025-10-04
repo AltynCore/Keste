@@ -120,7 +120,7 @@ export function formatDate(value: Date | number | string, format: string = 'YYYY
 /**
  * Auto-detect and format cell value
  */
-export function autoFormatCellValue(value: any): string {
+export function autoFormatCellValue(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
   }

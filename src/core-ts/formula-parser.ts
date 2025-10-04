@@ -27,6 +27,12 @@ export type FormulaToken =
   | { type: 'operator'; op: '+' | '-' | '*' | '/' | '^' | '&' }
   | { type: 'paren'; value: '(' | ')' };
 
+// Type for evaluated formula values
+export type FormulaValue = number | string | boolean | FormulaValue[];
+
+// Type for function arguments after evaluation
+export type FunctionArgs = FormulaValue[];
+
 /**
  * Convert Excel column letter to number (A=0, B=1, Z=25, AA=26)
  */
@@ -267,82 +273,44 @@ function evaluateRange(range: CellRange, getCellValue: CellGetter): (number | st
   return values;
 }
 
+// Helper to flatten and extract numbers from FormulaValue
+function extractNumbers(value: FormulaValue): number[] {
+  if (typeof value === 'number') {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(extractNumbers);
+  }
+  return [];
+}
+
 /**
  * Built-in Excel functions
  */
-const FUNCTIONS: Record<string, (args: any[], getCellValue: CellGetter) => number | string | boolean> = {
+const FUNCTIONS: Record<string, (args: FunctionArgs, getCellValue: CellGetter) => FormulaValue> = {
   SUM: (args, _getCellValue) => {
-    let sum = 0;
-    for (const arg of args) {
-      if (Array.isArray(arg)) {
-        sum += arg.reduce((acc, val) => acc + (typeof val === 'number' ? val : 0), 0);
-      } else if (typeof arg === 'number') {
-        sum += arg;
-      }
-    }
-    return sum;
+    const numbers = args.flatMap(extractNumbers);
+    return numbers.reduce((acc, val) => acc + val, 0);
   },
 
   AVERAGE: (args, _getCellValue) => {
-    let sum = 0;
-    let count = 0;
-    for (const arg of args) {
-      if (Array.isArray(arg)) {
-        sum += arg.reduce((acc, val) => {
-          if (typeof val === 'number') {
-            count++;
-            return acc + val;
-          }
-          return acc;
-        }, 0);
-      } else if (typeof arg === 'number') {
-        sum += arg;
-        count++;
-      }
-    }
-    return count > 0 ? sum / count : 0;
+    const numbers = args.flatMap(extractNumbers);
+    return numbers.length > 0 ? numbers.reduce((acc, val) => acc + val, 0) / numbers.length : 0;
   },
 
   COUNT: (args) => {
-    let count = 0;
-    for (const arg of args) {
-      if (Array.isArray(arg)) {
-        count += arg.filter(val => typeof val === 'number').length;
-      } else if (typeof arg === 'number') {
-        count++;
-      }
-    }
-    return count;
+    const numbers = args.flatMap(extractNumbers);
+    return numbers.length;
   },
 
   MIN: (args) => {
-    let min = Infinity;
-    for (const arg of args) {
-      if (Array.isArray(arg)) {
-        const nums = arg.filter(val => typeof val === 'number') as number[];
-        if (nums.length > 0) {
-          min = Math.min(min, ...nums);
-        }
-      } else if (typeof arg === 'number') {
-        min = Math.min(min, arg);
-      }
-    }
-    return min === Infinity ? 0 : min;
+    const numbers = args.flatMap(extractNumbers);
+    return numbers.length > 0 ? Math.min(...numbers) : 0;
   },
 
   MAX: (args) => {
-    let max = -Infinity;
-    for (const arg of args) {
-      if (Array.isArray(arg)) {
-        const nums = arg.filter(val => typeof val === 'number') as number[];
-        if (nums.length > 0) {
-          max = Math.max(max, ...nums);
-        }
-      } else if (typeof arg === 'number') {
-        max = Math.max(max, arg);
-      }
-    }
-    return max === -Infinity ? 0 : max;
+    const numbers = args.flatMap(extractNumbers);
+    return numbers.length > 0 ? Math.max(...numbers) : 0;
   },
 
   IF: (args) => {
@@ -409,7 +377,7 @@ function evaluateExpression(tokens: FormulaToken[], getCellValue: CellGetter): n
 
   // Handle operators with precedence
   // For simplicity, just handle left-to-right for now
-  let result: any = null;
+  let result: FormulaValue | null = null;
   let currentOp: string | null = null;
 
   for (const token of tokens) {
@@ -443,7 +411,10 @@ function evaluateExpression(tokens: FormulaToken[], getCellValue: CellGetter): n
     }
   }
 
-  return result;
+  // Ensure we return a valid type (handle null case)
+  if (result === null) return 0;
+  if (Array.isArray(result)) return result[0] !== undefined ? (result[0] as number | string | boolean) : 0;
+  return result as number | string | boolean;
 }
 
 /**
@@ -472,7 +443,12 @@ function evaluateFunction(token: FormulaToken & { type: 'function' }, getCellVal
     return evaluateExpression(argTokens, getCellValue);
   });
 
-  return func(evaluatedArgs, getCellValue);
+  const result = func(evaluatedArgs, getCellValue);
+  // Functions return simple values; if somehow an array, take first element
+  if (Array.isArray(result)) {
+    return result[0] !== undefined ? (result[0] as string | number | boolean) : 0;
+  }
+  return result as string | number | boolean;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { FixedSizeGrid as Grid } from 'react-window';
+import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
 import { Table } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import { Card } from './ui/card';
@@ -64,7 +64,7 @@ function GridView({ sheet }: GridViewProps) {
     return result;
   };
 
-  const Cell = ({ columnIndex, rowIndex, style }: any) => {
+  const Cell = ({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
     if (rowIndex === 0 && columnIndex === 0) {
       return (
         <div

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { FixedSizeGrid as Grid } from 'react-window';
+import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
 import { Table, Copy, Scissors, ClipboardPaste, Trash2 } from 'lucide-react';
 import type { SheetModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
@@ -121,7 +121,7 @@ export function EditableGridView({
     return result;
   };
 
-  const Cell = useCallback(({ columnIndex, rowIndex, style }: any) => {
+  const Cell = useCallback(({ columnIndex, rowIndex, style }: GridChildComponentProps) => {
     // Header cells
     if (rowIndex === 0 && columnIndex === 0) {
       return (
