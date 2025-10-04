@@ -5,10 +5,14 @@ import EditableGridView from './EditableGridView';
 import ExportBar from './ExportBar';
 import SheetTabs from './SheetTabs';
 import { FormulaBar } from './FormulaBar';
+import { FindReplaceDialog } from './FindReplaceDialog';
+import { DataValidationDialog } from './DataValidationDialog';
+import { ConditionalFormattingDialog } from './ConditionalFormattingDialog';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
 import { useSpreadsheetEditor } from '../hooks/useSpreadsheetEditor';
+import { useDataManagement } from '../hooks/useDataManagement';
 import type { WorkbookModel } from '../core-ts/types';
 import type { CellPosition, NavigationDirection } from '../core-ts/editor-types';
 
@@ -21,6 +25,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [selectedSheetIndex, setSelectedSheetIndex] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [dataValidationOpen, setDataValidationOpen] = useState(false);
+  const [conditionalFormattingOpen, setConditionalFormattingOpen] = useState(false);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -53,6 +60,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   } = useSpreadsheetEditor(initialWorkbook);
 
   const currentSheet = workbook.sheets[selectedSheetIndex];
+
+  // Initialize data management hook
+  const dataManagement = useDataManagement(currentSheet?.id || '');
 
   const handleCellClick = (position: CellPosition) => {
     // If clicking on the same cell that is already selected, don't stop editing
@@ -145,8 +155,18 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   // Keyboard shortcuts
   useState(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + F for Find
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
+      // Ctrl/Cmd + H for Replace
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+        e.preventDefault();
+        setFindReplaceOpen(true);
+      }
       // Ctrl/Cmd + Z for undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
       }
@@ -316,6 +336,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         isItalic={currentCellStyle.fontItalic}
         isUnderline={currentCellStyle.fontUnderline}
         currentAlign={currentCellStyle.horizontalAlign || 'left'}
+        onFindReplace={() => setFindReplaceOpen(true)}
+        onDataValidation={() => setDataValidationOpen(true)}
+        onConditionalFormatting={() => setConditionalFormattingOpen(true)}
       />
 
       {/* Formula Bar - Excel position */}
@@ -374,6 +397,74 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         sheets={workbook.sheets}
         selectedIndex={selectedSheetIndex}
         onSelectSheet={setSelectedSheetIndex}
+      />
+
+      {/* Phase 6 Dialogs */}
+      <FindReplaceDialog
+        open={findReplaceOpen}
+        onOpenChange={setFindReplaceOpen}
+        onFind={(options) => dataManagement.find(currentSheet, options)}
+        onReplace={(result, options) => {
+          const cell = currentSheet.cells.get(`${result.row}-${result.col}`);
+          if (cell) {
+            const newValue = dataManagement.replace(cell, options);
+            setCellValue({ row: result.row, col: result.col, sheetId: currentSheet.id }, newValue);
+          }
+        }}
+        onReplaceAll={(options) => {
+          const results = dataManagement.find(currentSheet, options);
+          results.forEach((result) => {
+            const cell = currentSheet.cells.get(`${result.row}-${result.col}`);
+            if (cell) {
+              const newValue = dataManagement.replace(cell, options);
+              setCellValue({ row: result.row, col: result.col, sheetId: currentSheet.id }, newValue);
+            }
+          });
+          toast({
+            title: "Replace All Complete",
+            description: `Replaced ${results.length} occurrences`,
+          });
+        }}
+        onNavigateToResult={(result) => {
+          setSelectedCell({ row: result.row, col: result.col, sheetId: result.sheetId });
+        }}
+      />
+
+      {selectedCell && (
+        <DataValidationDialog
+          open={dataValidationOpen}
+          onOpenChange={setDataValidationOpen}
+          row={selectedCell.row}
+          col={selectedCell.col}
+          currentValidation={dataManagement.getValidation(selectedCell.row, selectedCell.col)}
+          onApply={(validation) => {
+            if (validation) {
+              dataManagement.setValidation(validation);
+              toast({
+                title: "Data Validation Applied",
+                description: `Validation rule applied to cell`,
+              });
+            } else {
+              dataManagement.removeValidation(selectedCell.row, selectedCell.col);
+              toast({
+                title: "Data Validation Removed",
+                description: `Validation rule removed from cell`,
+              });
+            }
+          }}
+        />
+      )}
+
+      <ConditionalFormattingDialog
+        open={conditionalFormattingOpen}
+        onOpenChange={setConditionalFormattingOpen}
+        onApply={(rule) => {
+          dataManagement.addConditionalFormat(rule);
+          toast({
+            title: "Conditional Formatting Applied",
+            description: `Formatting rule applied`,
+          });
+        }}
       />
     </div>
   );
