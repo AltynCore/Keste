@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -26,6 +26,9 @@ interface ExportBarProps {
   isItalic?: boolean;
   isUnderline?: boolean;
   currentAlign?: 'left' | 'center' | 'right';
+  onFindReplace?: () => void;
+  onDataValidation?: () => void;
+  onConditionalFormatting?: () => void;
 }
 
 function ExportBar({
@@ -50,6 +53,9 @@ function ExportBar({
   isItalic = false,
   isUnderline = false,
   currentAlign = 'left',
+  onFindReplace,
+  onDataValidation,
+  onConditionalFormatting,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -271,6 +277,69 @@ function ExportBar({
           >
             <AlignRight className="h-3.5 w-3.5" />
           </Button>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Data Tools Group */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onFindReplace}
+                disabled={!onFindReplace}
+              >
+                <Search className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Find & Replace</div>
+                <div className="text-xs opacity-70">Ctrl+F</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onDataValidation}
+                disabled={!onDataValidation}
+              >
+                <Shield className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Data Validation</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onConditionalFormatting}
+                disabled={!onConditionalFormatting}
+              >
+                <Palette className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Conditional Formatting</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Progress */}
