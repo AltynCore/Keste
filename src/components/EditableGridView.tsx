@@ -9,7 +9,8 @@ interface EditableGridViewProps {
   sheet: SheetModel;
   editingState: EditingState;
   selectedCell: CellPosition | null;
-  onCellClick: (position: CellPosition) => void;
+  selection: { start: CellPosition; end: CellPosition } | null;
+  onCellClick: (position: CellPosition, isShiftKey?: boolean) => void;
   onCellDoubleClick: (position: CellPosition) => void;
   onEditingValueChange: (value: string) => void;
   onStopEditing: (save: boolean) => void;
@@ -23,6 +24,7 @@ export function EditableGridView({
   sheet,
   editingState,
   selectedCell,
+  selection,
   onCellClick,
   onCellDoubleClick,
   onEditingValueChange,
@@ -32,6 +34,7 @@ export function EditableGridView({
   getCellDisplayValue,
 }: EditableGridViewProps) {
   const [dimensions, setDimensions] = useState({ width: 1000, height: 600 });
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const updateDimensions = () => {
@@ -154,6 +157,15 @@ export function EditableGridView({
       selectedCell?.col === columnIndex &&
       selectedCell?.sheetId === sheet.id;
 
+    // Check if cell is in selection range
+    const isInSelection = selection && (
+      rowIndex >= Math.min(selection.start.row, selection.end.row) &&
+      rowIndex <= Math.max(selection.start.row, selection.end.row) &&
+      columnIndex >= Math.min(selection.start.col, selection.end.col) &&
+      columnIndex <= Math.max(selection.start.col, selection.end.col) &&
+      selection.start.sheetId === sheet.id
+    );
+
     const isEditing =
       editingState.isEditing &&
       editingState.position?.row === rowIndex &&
@@ -266,7 +278,21 @@ export function EditableGridView({
       <div
         style={customStyle}
         onClick={(e) => {
-          if (e.detail !== 2) onCellClick(position);
+          if (e.detail !== 2) onCellClick(position, e.shiftKey);
+        }}
+        onMouseDown={(e) => {
+          if (e.button === 0 && !e.shiftKey) { // Left click without shift
+            setIsDragging(true);
+            onCellClick(position, false);
+          }
+        }}
+        onMouseEnter={() => {
+          if (isDragging) {
+            onCellClick(position, true); // Extend selection while dragging
+          }
+        }}
+        onMouseUp={() => {
+          setIsDragging(false);
         }}
         onDoubleClick={(e) => {
           e.preventDefault();
@@ -275,7 +301,7 @@ export function EditableGridView({
         }}
         onContextMenu={(e) => {
           e.preventDefault();
-          onCellClick(position); // Select on right-click
+          onCellClick(position, false); // Select on right-click
           // Context menu can be added globally if needed
         }}
         className={cn(
@@ -283,6 +309,8 @@ export function EditableGridView({
           "border-r border-b px-2 py-1 text-sm overflow-hidden text-ellipsis whitespace-nowrap cursor-cell select-none",
           isSelected
             ? "bg-primary/10 border-2 border-primary -m-[1px] z-20 ring-2 ring-primary/20"
+            : isInSelection
+            ? "bg-primary/5 border-primary/50"
             : "hover:bg-accent/30",
           hasFormula && "text-primary font-mono text-xs"
         )}
@@ -291,7 +319,16 @@ export function EditableGridView({
         {displayValue}
       </div>
     );
-  }, [sheet.id, selectedCell, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate]);
+  }, [sheet.id, selectedCell, selection, editingState, getCellValue, getCellDisplayValue, onCellClick, onCellDoubleClick, onEditingValueChange, onStopEditing, onNavigate, isDragging]);
+
+  // Stop dragging when mouse up anywhere
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
 
   return (
     <div id="grid-container" className="h-full bg-background">

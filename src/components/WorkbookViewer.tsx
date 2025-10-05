@@ -53,6 +53,8 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     editingState,
     selectedCell,
     setSelectedCell,
+    setSelectedCellWithSelection,
+    selection,
     getCellValue,
     getCellDisplayValue,
     getCellStyle,
@@ -123,7 +125,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     },
   });
 
-  const handleCellClick = (position: CellPosition) => {
+  const handleCellClick = (position: CellPosition, extendSelection: boolean = false) => {
     // If clicking on the same cell that is already selected, don't stop editing
     if (editingState.isEditing &&
         editingState.position?.row === position.row &&
@@ -132,7 +134,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
       return;
     }
 
-    setSelectedCell(position);
+    setSelectedCellWithSelection(position, extendSelection);
     if (editingState.isEditing) {
       stopEditing(true);
     }
@@ -401,16 +403,35 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const currentCellRef = selectedCell ? getCellRef(selectedCell.row, selectedCell.col) : '';
   const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';
   const currentCellStyle = getCellStyle();
+  
+  // Calculate selection info
+  const selectionInfo = selection ? {
+    rowCount: Math.abs(selection.end.row - selection.start.row) + 1,
+    colCount: Math.abs(selection.end.col - selection.start.col) + 1,
+    cellCount: (Math.abs(selection.end.row - selection.start.row) + 1) * 
+               (Math.abs(selection.end.col - selection.start.col) + 1),
+  } : null;
 
   // Phase 7 handlers
   const handleMergeCells = () => {
     if (!selectedCell) return;
-    // For simplicity, merge 2x2 cells around selected cell
-    mergeCells(selectedCell.row, selectedCell.col, selectedCell.row + 1, selectedCell.col + 1);
-    toast({
-      title: "Cells Merged",
-      description: "Selected cells have been merged",
-    });
+    
+    // Use selection range if available, otherwise merge 2x2 cells around selected cell
+    if (selection) {
+      mergeCells(); // Will use selection automatically
+      const cellCount = (Math.abs(selection.end.row - selection.start.row) + 1) * 
+                        (Math.abs(selection.end.col - selection.start.col) + 1);
+      toast({
+        title: "Cells Merged",
+        description: `Merged ${cellCount} cells`,
+      });
+    } else {
+      mergeCells(selectedCell.row, selectedCell.col, selectedCell.row + 1, selectedCell.col + 1);
+      toast({
+        title: "Cells Merged",
+        description: "Merged 2x2 cells",
+      });
+    }
   };
 
   const handleInsertRow = () => {
@@ -581,17 +602,24 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
       />
 
       {/* Formula Bar - Excel position */}
-      <FormulaBar
-        cellReference={currentCellRef}
-        value={editingState.isEditing ? editingState.value : currentCellValue}
-        isEditing={editingState.isEditing}
-        onChange={updateEditingValue}
-        onFocus={() => {
-          if (selectedCell) {
-            startEditing(selectedCell);
-          }
-        }}
-      />
+      <div className="flex items-center gap-2 border-b bg-background px-2 py-1">
+        <FormulaBar
+          cellReference={currentCellRef}
+          value={editingState.isEditing ? editingState.value : currentCellValue}
+          isEditing={editingState.isEditing}
+          onChange={updateEditingValue}
+          onFocus={() => {
+            if (selectedCell) {
+              startEditing(selectedCell);
+            }
+          }}
+        />
+        {selectionInfo && selectionInfo.cellCount > 1 && (
+          <div className="text-xs text-muted-foreground whitespace-nowrap px-2 py-1 bg-accent/50 rounded">
+            {selectionInfo.rowCount}R × {selectionInfo.colCount}C ({selectionInfo.cellCount} cells)
+          </div>
+        )}
+      </div>
 
       {/* Main Grid Area */}
       <div className="flex-1 overflow-hidden">
@@ -607,6 +635,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
               sheet={currentSheet}
               editingState={editingState}
               selectedCell={selectedCell}
+              selection={selection}
               onCellClick={handleCellClick}
               onCellDoubleClick={handleCellDoubleClick}
               onEditingValueChange={updateEditingValue}

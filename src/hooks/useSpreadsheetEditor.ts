@@ -14,6 +14,22 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   });
   const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  
+  // Extended setSelectedCell that can handle selection ranges
+  const setSelectedCellWithSelection = useCallback((position: CellPosition, extendSelection: boolean = false) => {
+    if (extendSelection && selectedCell) {
+      // Extend selection from current selected cell to new position
+      setSelection({
+        start: selectedCell,
+        end: position,
+      });
+      // Keep the original selected cell as anchor
+    } else {
+      // Single cell selection - clear range
+      setSelectedCell(position);
+      setSelection(null);
+    }
+  }, [selectedCell]);
   const [manualCalc, setManualCalc] = useState(false); // Manual calculation mode
 
   const undoRedoRef = useRef<UndoRedoState>({
@@ -427,9 +443,23 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     applyCellStyle(updates);
   }, [applyCellStyle]);
 
-  // Merge cells
-  const mergeCells = useCallback((startRow: number, startCol: number, endRow: number, endCol: number) => {
-    if (!selectedCell) return;
+  // Merge cells - works with selection range or manual range
+  const mergeCells = useCallback((startRow?: number, startCol?: number, endRow?: number, endCol?: number) => {
+    let mergeRange: { startRow: number; startCol: number; endRow: number; endCol: number } | null = null;
+
+    // Use selection if available and no manual range provided
+    if (!startRow && !startCol && !endRow && !endCol && selection) {
+      mergeRange = {
+        startRow: Math.min(selection.start.row, selection.end.row),
+        startCol: Math.min(selection.start.col, selection.end.col),
+        endRow: Math.max(selection.start.row, selection.end.row),
+        endCol: Math.max(selection.start.col, selection.end.col),
+      };
+    } else if (startRow && startCol && endRow && endCol) {
+      mergeRange = { startRow, startCol, endRow, endCol };
+    }
+
+    if (!mergeRange || !selectedCell) return;
 
     setWorkbook(prev => {
       const newWorkbook = { ...prev };
@@ -440,9 +470,9 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
       const sheet = { ...newWorkbook.sheets[sheetIndex] };
 
       // Create merge range reference (e.g., "A1:B2")
-      const colStartLetter = String.fromCharCode(64 + startCol);
-      const colEndLetter = String.fromCharCode(64 + endCol);
-      const mergeRef = `${colStartLetter}${startRow}:${colEndLetter}${endRow}`;
+      const colStartLetter = String.fromCharCode(64 + mergeRange!.startCol);
+      const colEndLetter = String.fromCharCode(64 + mergeRange!.endCol);
+      const mergeRef = `${colStartLetter}${mergeRange!.startRow}:${colEndLetter}${mergeRange!.endRow}`;
 
       // Add to merged ranges
       const mergedRanges = [...sheet.mergedRanges, { ref: mergeRef }];
@@ -453,7 +483,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
 
       return newWorkbook;
     });
-  }, [selectedCell]);
+  }, [selectedCell, selection]);
 
   // Unmerge cells
   const unmergeCells = useCallback((_row: number, _col: number) => {
@@ -837,6 +867,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     editingState,
     selectedCell,
     setSelectedCell,
+    setSelectedCellWithSelection,
     selection,
     setSelection,
     getCellValue,
