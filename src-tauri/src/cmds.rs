@@ -19,7 +19,7 @@ pub fn choose_open_file() -> Result<String, String> {
 pub fn choose_save_file(default_name: String) -> Result<String, String> {
     FileDialogBuilder::new()
         .set_file_name(&default_name)
-        .add_filter("SQLite Database", &["sqlite", "db"])
+        .add_filter("Keste Spreadsheet", &["kst"])
         .save_file()
         .map(|path| path.to_string_lossy().to_string())
         .ok_or_else(|| "No file selected".to_string())
