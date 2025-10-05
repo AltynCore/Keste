@@ -28,6 +28,11 @@ export interface CellData {
   style?: CellStyle;
 }
 
+export interface BorderStyle {
+  style?: 'thin' | 'medium' | 'thick' | 'dashed' | 'dotted' | 'double';
+  color?: string;
+}
+
 export interface CellStyle {
   // Font
   fontName?: string;
@@ -45,11 +50,13 @@ export interface CellStyle {
   verticalAlign?: 'top' | 'middle' | 'bottom';
 
   // Border
-  borderTop?: boolean;
-  borderRight?: boolean;
-  borderBottom?: boolean;
-  borderLeft?: boolean;
-  borderColor?: string;
+  borderTop?: BorderStyle;
+  borderRight?: BorderStyle;
+  borderBottom?: BorderStyle;
+  borderLeft?: BorderStyle;
+
+  // Number format
+  numberFormat?: string;
 }
 
 export interface CellXfsStyle {

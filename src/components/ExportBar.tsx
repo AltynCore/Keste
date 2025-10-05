@@ -1,8 +1,11 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import KeyboardShortcutsDialog from './KeyboardShortcutsDialog';
+import { BorderPicker, type BorderSides } from './BorderPicker';
+import { NumberFormatPicker } from './NumberFormatPicker';
+import type { BorderStyle } from '../core-ts/style-types';
 
 interface ExportBarProps {
   onExportSqlite: () => void;
@@ -29,6 +32,14 @@ interface ExportBarProps {
   onFindReplace?: () => void;
   onDataValidation?: () => void;
   onConditionalFormatting?: () => void;
+  onApplyBorder?: (sides: BorderSides, style: BorderStyle) => void;
+  onApplyNumberFormat?: (format: string) => void;
+  currentNumberFormat?: string;
+  onMergeCells?: () => void;
+  onInsertRow?: () => void;
+  onDeleteRow?: () => void;
+  onInsertColumn?: () => void;
+  onDeleteColumn?: () => void;
 }
 
 function ExportBar({
@@ -56,6 +67,14 @@ function ExportBar({
   onFindReplace,
   onDataValidation,
   onConditionalFormatting,
+  onApplyBorder,
+  onApplyNumberFormat,
+  currentNumberFormat = 'General',
+  onMergeCells,
+  onInsertRow,
+  onDeleteRow,
+  onInsertColumn,
+  onDeleteColumn,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -277,6 +296,127 @@ function ExportBar({
           >
             <AlignRight className="h-3.5 w-3.5" />
           </Button>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 7: Borders & Number Format */}
+        <div className="flex items-center gap-1">
+          <BorderPicker
+            onApplyBorder={(sides, style) => onApplyBorder?.(sides, style)}
+            disabled={!onApplyBorder}
+          />
+
+          <NumberFormatPicker
+            currentFormat={currentNumberFormat}
+            onApplyFormat={(format) => onApplyNumberFormat?.(format)}
+            disabled={!onApplyNumberFormat}
+          />
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 7: Merge/Unmerge */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onMergeCells}
+                disabled={!onMergeCells}
+              >
+                <Combine className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Merge Cells</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 7: Row/Column Operations */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onInsertRow}
+                disabled={!onInsertRow}
+              >
+                <ArrowDownToLine className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Insert Row</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onInsertColumn}
+                disabled={!onInsertColumn}
+              >
+                <ArrowRightToLine className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Insert Column</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onDeleteRow}
+                disabled={!onDeleteRow}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Delete Row</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onDeleteColumn}
+                disabled={!onDeleteColumn}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Delete Column</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         <div className="h-6 w-px bg-border" />

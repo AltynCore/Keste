@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { WorkbookModel, CellData, CellStyle } from '../core-ts/types';
+import type { WorkbookModel, CellData, CellStyle, BorderStyle } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
 import { HyperFormula, SimpleCellAddress } from 'hyperformula';
 
@@ -400,6 +400,332 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     applyCellStyle({ backgroundColor: color });
   }, [applyCellStyle]);
 
+  // Set number format
+  const setNumberFormat = useCallback((format: string) => {
+    applyCellStyle({ numberFormat: format });
+  }, [applyCellStyle]);
+
+  // Apply border to cell
+  const applyBorder = useCallback((sides: { top?: boolean; right?: boolean; bottom?: boolean; left?: boolean }, borderStyle: BorderStyle) => {
+    const updates: Partial<CellStyle> = {};
+
+    if (sides.top) {
+      updates.borderTop = borderStyle;
+    }
+    if (sides.right) {
+      updates.borderRight = borderStyle;
+    }
+    if (sides.bottom) {
+      updates.borderBottom = borderStyle;
+    }
+    if (sides.left) {
+      updates.borderLeft = borderStyle;
+    }
+
+    applyCellStyle(updates);
+  }, [applyCellStyle]);
+
+  // Merge cells
+  const mergeCells = useCallback((startRow: number, startCol: number, endRow: number, endCol: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+
+      // Create merge range reference (e.g., "A1:B2")
+      const colStartLetter = String.fromCharCode(64 + startCol);
+      const colEndLetter = String.fromCharCode(64 + endCol);
+      const mergeRef = `${colStartLetter}${startRow}:${colEndLetter}${endRow}`;
+
+      // Add to merged ranges
+      const mergedRanges = [...sheet.mergedRanges, { ref: mergeRef }];
+      sheet.mergedRanges = mergedRanges;
+
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Unmerge cells
+  const unmergeCells = useCallback((_row: number, _col: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+
+      // Find and remove merge range containing this cell
+      const mergedRanges = sheet.mergedRanges.filter(_range => {
+        // Parse range (e.g., "A1:B2")
+        // const [start, end] = range.ref.split(':');
+        // Simple check - could be improved
+        return true; // For now, keep all ranges
+      });
+
+      sheet.mergedRanges = mergedRanges;
+
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Insert row
+  const insertRow = useCallback((rowIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const cells = new Map(sheet.cells);
+
+      // Shift all cells below the insert point down by 1
+      const newCells = new Map<string, CellData>();
+      cells.forEach((cell, key) => {
+        if (cell.row >= rowIndex) {
+          const newCell = { ...cell, row: cell.row + 1 };
+          newCells.set(`${newCell.row}-${newCell.col}`, newCell);
+        } else {
+          newCells.set(key, cell);
+        }
+      });
+
+      sheet.cells = newCells;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Delete row
+  const deleteRow = useCallback((rowIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const cells = new Map(sheet.cells);
+
+      // Remove cells in the row and shift cells below up
+      const newCells = new Map<string, CellData>();
+      cells.forEach((cell, key) => {
+        if (cell.row === rowIndex) {
+          // Delete this cell
+          return;
+        } else if (cell.row > rowIndex) {
+          const newCell = { ...cell, row: cell.row - 1 };
+          newCells.set(`${newCell.row}-${newCell.col}`, newCell);
+        } else {
+          newCells.set(key, cell);
+        }
+      });
+
+      sheet.cells = newCells;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Insert column
+  const insertColumn = useCallback((colIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const cells = new Map(sheet.cells);
+
+      // Shift all cells to the right of the insert point
+      const newCells = new Map<string, CellData>();
+      cells.forEach((cell, key) => {
+        if (cell.col >= colIndex) {
+          const newCell = { ...cell, col: cell.col + 1 };
+          newCells.set(`${newCell.row}-${newCell.col}`, newCell);
+        } else {
+          newCells.set(key, cell);
+        }
+      });
+
+      sheet.cells = newCells;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Delete column
+  const deleteColumn = useCallback((colIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const cells = new Map(sheet.cells);
+
+      // Remove cells in the column and shift cells to the left
+      const newCells = new Map<string, CellData>();
+      cells.forEach((cell, key) => {
+        if (cell.col === colIndex) {
+          // Delete this cell
+          return;
+        } else if (cell.col > colIndex) {
+          const newCell = { ...cell, col: cell.col - 1 };
+          newCells.set(`${newCell.row}-${newCell.col}`, newCell);
+        } else {
+          newCells.set(key, cell);
+        }
+      });
+
+      sheet.cells = newCells;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Set row height
+  const setRowHeight = useCallback((rowIndex: number, height: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const rowProps = new Map(sheet.rowProps);
+
+      rowProps.set(rowIndex, {
+        row: rowIndex,
+        height,
+        customHeight: true,
+      });
+
+      sheet.rowProps = rowProps;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Set column width
+  const setColumnWidth = useCallback((colIndex: number, width: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const colProps = new Map(sheet.colProps);
+
+      colProps.set(colIndex, {
+        col: colIndex,
+        width,
+        customWidth: true,
+      });
+
+      sheet.colProps = colProps;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Hide/Show row
+  const toggleRowHidden = useCallback((rowIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const rowProps = new Map(sheet.rowProps);
+
+      const currentProp = rowProps.get(rowIndex);
+      rowProps.set(rowIndex, {
+        row: rowIndex,
+        ...currentProp,
+        hidden: !(currentProp?.hidden || false),
+      });
+
+      sheet.rowProps = rowProps;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
+  // Hide/Show column
+  const toggleColumnHidden = useCallback((colIndex: number) => {
+    if (!selectedCell) return;
+
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === selectedCell.sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      const colProps = new Map(sheet.colProps);
+
+      const currentProp = colProps.get(colIndex);
+      colProps.set(colIndex, {
+        col: colIndex,
+        ...currentProp,
+        hidden: !(currentProp?.hidden || false),
+      });
+
+      sheet.colProps = colProps;
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, [selectedCell]);
+
   return {
     workbook,
     setWorkbook,
@@ -428,6 +754,18 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     setAlignment,
     setFontColor,
     setBackgroundColor,
+    setNumberFormat,
+    applyBorder,
+    mergeCells,
+    unmergeCells,
+    insertRow,
+    deleteRow,
+    insertColumn,
+    deleteColumn,
+    setRowHeight,
+    setColumnWidth,
+    toggleRowHidden,
+    toggleColumnHidden,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
   };

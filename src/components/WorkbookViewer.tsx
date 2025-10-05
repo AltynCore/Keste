@@ -55,6 +55,13 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     setAlignment,
     setFontColor,
     setBackgroundColor,
+    setNumberFormat,
+    applyBorder,
+    mergeCells,
+    insertRow,
+    deleteRow,
+    insertColumn,
+    deleteColumn,
     canUndo,
     canRedo,
   } = useSpreadsheetEditor(initialWorkbook);
@@ -341,6 +348,53 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const currentCellValue = selectedCell ? getCellValue(selectedCell) : '';
   const currentCellStyle = getCellStyle();
 
+  // Phase 7 handlers
+  const handleMergeCells = () => {
+    if (!selectedCell) return;
+    // For simplicity, merge 2x2 cells around selected cell
+    mergeCells(selectedCell.row, selectedCell.col, selectedCell.row + 1, selectedCell.col + 1);
+    toast({
+      title: "Cells Merged",
+      description: "Selected cells have been merged",
+    });
+  };
+
+  const handleInsertRow = () => {
+    if (!selectedCell) return;
+    insertRow(selectedCell.row);
+    toast({
+      title: "Row Inserted",
+      description: `Row inserted at position ${selectedCell.row}`,
+    });
+  };
+
+  const handleDeleteRow = () => {
+    if (!selectedCell) return;
+    deleteRow(selectedCell.row);
+    toast({
+      title: "Row Deleted",
+      description: `Row ${selectedCell.row} deleted`,
+    });
+  };
+
+  const handleInsertColumn = () => {
+    if (!selectedCell) return;
+    insertColumn(selectedCell.col);
+    toast({
+      title: "Column Inserted",
+      description: `Column inserted at position ${selectedCell.col}`,
+    });
+  };
+
+  const handleDeleteColumn = () => {
+    if (!selectedCell) return;
+    deleteColumn(selectedCell.col);
+    toast({
+      title: "Column Deleted",
+      description: `Column ${selectedCell.col} deleted`,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Excel-like Ribbon */}
@@ -369,6 +423,14 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onFindReplace={() => setFindReplaceOpen(true)}
         onDataValidation={() => setDataValidationOpen(true)}
         onConditionalFormatting={() => setConditionalFormattingOpen(true)}
+        onApplyBorder={applyBorder}
+        onApplyNumberFormat={setNumberFormat}
+        currentNumberFormat={currentCellStyle.numberFormat || 'General'}
+        onMergeCells={handleMergeCells}
+        onInsertRow={handleInsertRow}
+        onDeleteRow={handleDeleteRow}
+        onInsertColumn={handleInsertColumn}
+        onDeleteColumn={handleDeleteColumn}
       />
 
       {/* Formula Bar - Excel position */}

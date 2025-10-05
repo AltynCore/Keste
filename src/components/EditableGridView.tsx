@@ -169,7 +169,7 @@ export function EditableGridView({
     const cellData = sheet.cells.get(cellKey);
     const cellStyle = cellData?.style || {};
 
-    // Build custom style object
+    // Build custom style object with borders
     const customStyle: React.CSSProperties = {
       ...style,
       fontFamily: cellStyle.fontName,
@@ -186,6 +186,48 @@ export function EditableGridView({
         : cellStyle.verticalAlign === 'middle' ? 'center'
         : undefined,
     };
+
+    // Apply borders if present
+    if (cellStyle.borderTop) {
+      const borderWidth = cellStyle.borderTop.style === 'medium' ? '2px'
+        : cellStyle.borderTop.style === 'thick' ? '3px'
+        : '1px';
+      const borderStyle = cellStyle.borderTop.style === 'dashed' ? 'dashed'
+        : cellStyle.borderTop.style === 'dotted' ? 'dotted'
+        : cellStyle.borderTop.style === 'double' ? 'double'
+        : 'solid';
+      customStyle.borderTop = `${borderWidth} ${borderStyle} ${cellStyle.borderTop.color || '#000000'}`;
+    }
+    if (cellStyle.borderRight) {
+      const borderWidth = cellStyle.borderRight.style === 'medium' ? '2px'
+        : cellStyle.borderRight.style === 'thick' ? '3px'
+        : '1px';
+      const borderStyle = cellStyle.borderRight.style === 'dashed' ? 'dashed'
+        : cellStyle.borderRight.style === 'dotted' ? 'dotted'
+        : cellStyle.borderRight.style === 'double' ? 'double'
+        : 'solid';
+      customStyle.borderRight = `${borderWidth} ${borderStyle} ${cellStyle.borderRight.color || '#000000'}`;
+    }
+    if (cellStyle.borderBottom) {
+      const borderWidth = cellStyle.borderBottom.style === 'medium' ? '2px'
+        : cellStyle.borderBottom.style === 'thick' ? '3px'
+        : '1px';
+      const borderStyle = cellStyle.borderBottom.style === 'dashed' ? 'dashed'
+        : cellStyle.borderBottom.style === 'dotted' ? 'dotted'
+        : cellStyle.borderBottom.style === 'double' ? 'double'
+        : 'solid';
+      customStyle.borderBottom = `${borderWidth} ${borderStyle} ${cellStyle.borderBottom.color || '#000000'}`;
+    }
+    if (cellStyle.borderLeft) {
+      const borderWidth = cellStyle.borderLeft.style === 'medium' ? '2px'
+        : cellStyle.borderLeft.style === 'thick' ? '3px'
+        : '1px';
+      const borderStyle = cellStyle.borderLeft.style === 'dashed' ? 'dashed'
+        : cellStyle.borderLeft.style === 'dotted' ? 'dotted'
+        : cellStyle.borderLeft.style === 'double' ? 'double'
+        : 'solid';
+      customStyle.borderLeft = `${borderWidth} ${borderStyle} ${cellStyle.borderLeft.color || '#000000'}`;
+    }
 
     if (isEditing) {
       return (
