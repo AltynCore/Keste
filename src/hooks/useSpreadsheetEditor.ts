@@ -13,11 +13,12 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   });
   const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [manualCalc, setManualCalc] = useState(false); // Manual calculation mode
 
   const undoRedoRef = useRef<UndoRedoState>({
     undoStack: [],
     redoStack: [],
-    maxSize: 100,
+    maxSize: 50, // Reduced from 100 for better memory usage
   });
 
   // ⚡ HyperFormula instance for professional formula evaluation
@@ -808,6 +809,27 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     }));
   }, []);
 
+  // Toggle manual calculation mode
+  const toggleManualCalc = useCallback(() => {
+    setManualCalc(prev => !prev);
+  }, []);
+
+  // Force recalculation (when in manual mode)
+  const recalculate = useCallback(() => {
+    if (hfRef.current) {
+      // Trigger full recalculation
+      syncSheetToHyperFormula();
+    }
+  }, [syncSheetToHyperFormula]);
+
+  // Optimize undo stack (remove old entries to save memory)
+  const optimizeUndoStack = useCallback(() => {
+    const stack = undoRedoRef.current.undoStack;
+    if (stack.length > undoRedoRef.current.maxSize) {
+      undoRedoRef.current.undoStack = stack.slice(-undoRedoRef.current.maxSize);
+    }
+  }, []);
+
   return {
     workbook,
     setWorkbook,
@@ -854,6 +876,10 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     addNamedRange,
     updateNamedRange,
     deleteNamedRange,
+    manualCalc,
+    toggleManualCalc,
+    recalculate,
+    optimizeUndoStack,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
   };

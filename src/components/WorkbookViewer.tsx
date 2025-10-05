@@ -13,11 +13,13 @@ import { ChartBuilder } from './ChartBuilder';
 import { ChartRenderer } from './ChartRenderer';
 import { FormulaLibrary } from './FormulaLibrary';
 import { NameManager } from './NameManager';
+import { PerformanceMonitor } from './PerformanceMonitor';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
 import { useSpreadsheetEditor } from '../hooks/useSpreadsheetEditor';
 import { useDataManagement } from '../hooks/useDataManagement';
+import { useAutoSave } from '../hooks/useAutoSave';
 import type { WorkbookModel } from '../core-ts/types';
 import type { CellPosition, NavigationDirection } from '../core-ts/editor-types';
 import type { ChartConfig } from '../core-ts/chart-types';
@@ -38,6 +40,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [formulaLibraryOpen, setFormulaLibraryOpen] = useState(false);
   const [nameManagerOpen, setNameManagerOpen] = useState(false);
   const [showFormulas, setShowFormulas] = useState(false);
+  const [perfMonitorOpen, setPerfMonitorOpen] = useState(false);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -77,6 +80,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     addNamedRange,
     updateNamedRange,
     deleteNamedRange,
+    manualCalc,
+    toggleManualCalc,
+    recalculate,
     canUndo,
     canRedo,
   } = useSpreadsheetEditor(initialWorkbook);
@@ -86,19 +92,36 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   // Initialize data management hook
   const dataManagement = useDataManagement(currentSheet?.id || '');
 
+  // Phase 10: Auto-save hook
+  const autoSave = useAutoSave({
+    enabled: true,
+    interval: 30000, // 30 seconds
+    onSave: async () => {
+      await handleSaveKst();
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Auto-save failed",
+        description: error.message,
+      });
+    },
+  });
+
   const handleCellClick = (position: CellPosition) => {
     // If clicking on the same cell that is already selected, don't stop editing
-    if (editingState.isEditing && 
-        editingState.position?.row === position.row && 
-        editingState.position?.col === position.col && 
+    if (editingState.isEditing &&
+        editingState.position?.row === position.row &&
+        editingState.position?.col === position.col &&
         editingState.position?.sheetId === position.sheetId) {
       return;
     }
-    
+
     setSelectedCell(position);
     if (editingState.isEditing) {
       stopEditing(true);
     }
+    autoSave.markDirty(); // Mark as dirty on cell changes
   };
 
   const handleCellDoubleClick = (position: CellPosition) => {
@@ -148,6 +171,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         title: "Pasted",
         description: "Value pasted from clipboard",
       });
+      autoSave.markDirty();
     } catch (err) {
       console.error('Failed to paste:', err);
     }
@@ -449,6 +473,25 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     }
   };
 
+  // Phase 10: Performance and calculation handlers
+  const handleRecalculate = () => {
+    recalculate();
+    toast({
+      title: "Recalculation Complete",
+      description: "All formulas have been recalculated",
+    });
+  };
+
+  const handleToggleManualCalc = () => {
+    toggleManualCalc();
+    toast({
+      title: manualCalc ? "Automatic Calculation" : "Manual Calculation",
+      description: manualCalc
+        ? "Formulas will calculate automatically"
+        : "Formulas will only calculate when you click Recalculate",
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Excel-like Ribbon */}
@@ -490,6 +533,15 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onNameManager={() => setNameManagerOpen(true)}
         onToggleShowFormulas={() => setShowFormulas(!showFormulas)}
         showFormulas={showFormulas}
+        onPerformanceMonitor={() => setPerfMonitorOpen(true)}
+        onToggleManualCalc={handleToggleManualCalc}
+        manualCalc={manualCalc}
+        onRecalculate={handleRecalculate}
+        autoSaveStatus={{
+          enabled: true,
+          lastSave: autoSave.lastSaveTime,
+          isSaving: autoSave.isSaving,
+        }}
       />
 
       {/* Formula Bar - Excel position */}
@@ -654,6 +706,12 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
             description: `Navigating to ${range.name}: ${range.range}`,
           });
         }}
+      />
+
+      {/* Phase 10: Performance Monitor Dialog */}
+      <PerformanceMonitor
+        open={perfMonitorOpen}
+        onOpenChange={setPerfMonitorOpen}
       />
     </div>
   );

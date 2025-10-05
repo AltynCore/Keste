@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3, Code2, BookmarkPlus, Eye } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3, Code2, BookmarkPlus, Eye, Activity, Calculator, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -45,6 +45,11 @@ interface ExportBarProps {
   onNameManager?: () => void;
   onToggleShowFormulas?: () => void;
   showFormulas?: boolean;
+  onPerformanceMonitor?: () => void;
+  onToggleManualCalc?: () => void;
+  manualCalc?: boolean;
+  onRecalculate?: () => void;
+  autoSaveStatus?: { enabled: boolean; lastSave: number | null; isSaving: boolean };
 }
 
 function ExportBar({
@@ -85,6 +90,11 @@ function ExportBar({
   onNameManager,
   onToggleShowFormulas,
   showFormulas = false,
+  onPerformanceMonitor,
+  onToggleManualCalc,
+  manualCalc = false,
+  onRecalculate,
+  autoSaveStatus,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -580,6 +590,97 @@ function ExportBar({
               </div>
             </TooltipContent>
           </Tooltip>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 10: Performance Tools */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onPerformanceMonitor}
+                disabled={!onPerformanceMonitor}
+              >
+                <Activity className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Performance Monitor</div>
+                <div className="text-xs opacity-70">View metrics</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={manualCalc ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={onToggleManualCalc}
+                disabled={!onToggleManualCalc}
+              >
+                <Calculator className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Manual Calculation</div>
+                <div className="text-xs opacity-70">{manualCalc ? 'ON' : 'OFF'}</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          {manualCalc && onRecalculate && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={onRecalculate}
+                >
+                  Recalculate Now
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-center">
+                  <div className="font-semibold">Recalculate Formulas</div>
+                  <div className="text-xs opacity-70">F9</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {autoSaveStatus && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {autoSaveStatus.isSaving ? (
+                    <span>Saving...</span>
+                  ) : autoSaveStatus.lastSave ? (
+                    <span>Saved {Math.round((Date.now() - autoSaveStatus.lastSave) / 1000)}s ago</span>
+                  ) : (
+                    <span>Auto-save</span>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <div className="text-center">
+                  <div className="font-semibold">Auto-Save</div>
+                  <div className="text-xs opacity-70">
+                    {autoSaveStatus.enabled ? 'Enabled (30s)' : 'Disabled'}
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         {/* Progress */}
