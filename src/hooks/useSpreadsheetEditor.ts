@@ -726,6 +726,62 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     });
   }, [selectedCell]);
 
+  // Add chart to sheet
+  const addChart = useCallback((sheetId: string, chartConfig: any) => {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      sheet.charts = [...(sheet.charts || []), chartConfig];
+
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, []);
+
+  // Update chart
+  const updateChart = useCallback((sheetId: string, chartId: string, updates: Partial<any>) => {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      sheet.charts = (sheet.charts || []).map(chart =>
+        chart.id === chartId ? { ...chart, ...updates } : chart
+      );
+
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, []);
+
+  // Delete chart
+  const deleteChart = useCallback((sheetId: string, chartId: string) => {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const sheetIndex = newWorkbook.sheets.findIndex(s => s.id === sheetId);
+
+      if (sheetIndex === -1) return prev;
+
+      const sheet = { ...newWorkbook.sheets[sheetIndex] };
+      sheet.charts = (sheet.charts || []).filter(chart => chart.id !== chartId);
+
+      newWorkbook.sheets = [...newWorkbook.sheets];
+      newWorkbook.sheets[sheetIndex] = sheet;
+
+      return newWorkbook;
+    });
+  }, []);
+
   return {
     workbook,
     setWorkbook,
@@ -766,6 +822,9 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     setColumnWidth,
     toggleRowHidden,
     toggleColumnHidden,
+    addChart,
+    updateChart,
+    deleteChart,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
   };

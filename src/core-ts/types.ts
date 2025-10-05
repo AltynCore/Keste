@@ -16,6 +16,7 @@ export interface SheetModel {
   rowProps: Map<number, RowProp>;
   colProps: Map<number, ColProp>;
   sheetView?: SheetView;
+  charts?: any[]; // ChartConfig[] - will be imported from chart-types
 }
 
 export interface CellData {

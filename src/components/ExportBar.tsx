@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2 } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -40,6 +40,7 @@ interface ExportBarProps {
   onDeleteRow?: () => void;
   onInsertColumn?: () => void;
   onDeleteColumn?: () => void;
+  onCreateChart?: () => void;
 }
 
 function ExportBar({
@@ -75,6 +76,7 @@ function ExportBar({
   onDeleteRow,
   onInsertColumn,
   onDeleteColumn,
+  onCreateChart,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -477,6 +479,31 @@ function ExportBar({
             <TooltipContent>
               <div className="text-center">
                 <div className="font-semibold">Conditional Formatting</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 8: Chart Tools */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onCreateChart}
+                disabled={!onCreateChart}
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Insert Chart</div>
+                <div className="text-xs opacity-70">Create visualization</div>
               </div>
             </TooltipContent>
           </Tooltip>

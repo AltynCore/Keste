@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { motion } from 'framer-motion';
+import { Trash2 } from 'lucide-react';
 import EditableGridView from './EditableGridView';
 import ExportBar from './ExportBar';
 import SheetTabs from './SheetTabs';
@@ -8,6 +9,8 @@ import { FormulaBar } from './FormulaBar';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { DataValidationDialog } from './DataValidationDialog';
 import { ConditionalFormattingDialog } from './ConditionalFormattingDialog';
+import { ChartBuilder } from './ChartBuilder';
+import { ChartRenderer } from './ChartRenderer';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
@@ -15,6 +18,7 @@ import { useSpreadsheetEditor } from '../hooks/useSpreadsheetEditor';
 import { useDataManagement } from '../hooks/useDataManagement';
 import type { WorkbookModel } from '../core-ts/types';
 import type { CellPosition, NavigationDirection } from '../core-ts/editor-types';
+import type { ChartConfig } from '../core-ts/chart-types';
 
 interface WorkbookViewerProps {
   workbook: WorkbookModel;
@@ -28,6 +32,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [findReplaceOpen, setFindReplaceOpen] = useState(false);
   const [dataValidationOpen, setDataValidationOpen] = useState(false);
   const [conditionalFormattingOpen, setConditionalFormattingOpen] = useState(false);
+  const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -62,6 +67,8 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     deleteRow,
     insertColumn,
     deleteColumn,
+    addChart,
+    deleteChart,
     canUndo,
     canRedo,
   } = useSpreadsheetEditor(initialWorkbook);
@@ -395,6 +402,23 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     });
   };
 
+  // Phase 8: Chart handlers
+  const handleCreateChart = (config: ChartConfig) => {
+    addChart(currentSheet.id, config);
+    toast({
+      title: "Chart Created",
+      description: `${config.type} chart created successfully`,
+    });
+  };
+
+  const handleDeleteChart = (chartId: string) => {
+    deleteChart(currentSheet.id, chartId);
+    toast({
+      title: "Chart Deleted",
+      description: "Chart removed from sheet",
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Excel-like Ribbon */}
@@ -431,6 +455,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onDeleteRow={handleDeleteRow}
         onInsertColumn={handleInsertColumn}
         onDeleteColumn={handleDeleteColumn}
+        onCreateChart={() => setChartBuilderOpen(true)}
       />
 
       {/* Formula Bar - Excel position */}
@@ -546,6 +571,32 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           });
         }}
       />
+
+      {/* Phase 8: Chart Builder Dialog */}
+      <ChartBuilder
+        open={chartBuilderOpen}
+        onOpenChange={setChartBuilderOpen}
+        onCreateChart={handleCreateChart}
+        currentSheetId={currentSheet?.id || ''}
+      />
+
+      {/* Phase 8: Render Charts */}
+      {currentSheet?.charts && currentSheet.charts.length > 0 && (
+        <div className="absolute bottom-20 right-4 space-y-4 max-w-2xl">
+          {currentSheet.charts.map((chart) => (
+            <div key={chart.id} className="relative">
+              <button
+                onClick={() => handleDeleteChart(chart.id)}
+                className="absolute top-2 right-2 z-10 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90"
+                title="Delete chart"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <ChartRenderer config={chart} sheet={currentSheet} />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
