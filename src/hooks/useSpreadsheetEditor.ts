@@ -3,6 +3,7 @@ import type { WorkbookModel, CellData, CellStyle, BorderStyle } from '../core-ts
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
 import type { CellComment, Comment, Change } from '../core-ts/comment-types';
 import { HyperFormula, SimpleCellAddress } from 'hyperformula';
+import { formatNumber } from '../core-ts/number-formatter';
 
 export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   const [workbook, setWorkbook] = useState<WorkbookModel>(initialWorkbook);
@@ -148,10 +149,26 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
         }
         if (typeof result === 'boolean') return result ? 'TRUE' : 'FALSE';
 
+        // Apply number format if present
+        if (typeof result === 'number' && cell.styleId !== undefined) {
+          const cellXf = workbookRef.current.cellXfs?.[cell.styleId];
+          if (cellXf?.numFmtId !== undefined) {
+            return formatNumber(result, cellXf.numFmtId, workbookRef.current);
+          }
+        }
+
         return result;
       } catch (error) {
         console.error('Formula evaluation error:', error);
         return '#ERROR!';
+      }
+    }
+
+    // Apply number format for non-formula cells
+    if (cell.styleId !== undefined) {
+      const cellXf = workbookRef.current.cellXfs?.[cell.styleId];
+      if (cellXf?.numFmtId !== undefined) {
+        return formatNumber(cell.value, cellXf.numFmtId, workbookRef.current);
       }
     }
 

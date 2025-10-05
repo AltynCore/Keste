@@ -1,12 +1,15 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { FixedSizeGrid as Grid, GridChildComponentProps } from 'react-window';
 import { Table } from 'lucide-react';
-import type { SheetModel } from '../core-ts/types';
+import type { SheetModel, WorkbookModel } from '../core-ts/types';
 import type { CellPosition, EditingState, NavigationDirection } from '../core-ts/editor-types';
+import { resolveCellStyle } from '../core-ts/style-resolver';
+import { shouldHideCell, getMergedCellSize } from '../core-ts/merge-utils';
 import { cn } from '@/lib/utils';
 
 interface EditableGridViewProps {
   sheet: SheetModel;
+  workbook: WorkbookModel; // НОВОЕ: для разрешения стилей
   editingState: EditingState;
   selectedCell: CellPosition | null;
   selection: { start: CellPosition; end: CellPosition } | null;
@@ -22,6 +25,7 @@ interface EditableGridViewProps {
 
 export function EditableGridView({
   sheet,
+  workbook, // НОВОЕ
   editingState,
   selectedCell,
   selection,
@@ -172,6 +176,15 @@ export function EditableGridView({
       editingState.position?.col === columnIndex &&
       editingState.position?.sheetId === sheet.id;
 
+    // ===== MERGED CELLS LOGIC =====
+    // Проверяем, нужно ли скрыть эту ячейку (она в merged range, но не master)
+    if (shouldHideCell(rowIndex, columnIndex, sheet.mergedRanges)) {
+      return null; // Не рендерить эту ячейку
+    }
+
+    // Проверяем, является ли эта ячейка master в merged range
+    const mergedSize = getMergedCellSize(rowIndex, columnIndex, sheet.mergedRanges);
+
     const rawValue = getCellValue(position);
     const displayValue = isEditing ? editingState.value : getCellDisplayValue(position);
     const hasFormula = rawValue.startsWith('=');
@@ -179,28 +192,41 @@ export function EditableGridView({
     // Get cell data for styling
     const cellKey = `${position.row}-${position.col}`;
     const cellData = sheet.cells.get(cellKey);
-    const cellStyle = cellData?.style || {};
+
+    // НОВОЕ: Разрешаем стиль через style-resolver
+    const cellStyle = cellData ? resolveCellStyle(cellData, workbook) : undefined;
 
     // Build custom style object with borders
     const customStyle: React.CSSProperties = {
       ...style,
-      fontFamily: cellStyle.fontName,
-      fontSize: cellStyle.fontSize ? `${cellStyle.fontSize}px` : undefined,
-      fontWeight: cellStyle.fontBold ? 'bold' : undefined,
-      fontStyle: cellStyle.fontItalic ? 'italic' : undefined,
-      textDecoration: cellStyle.fontUnderline ? 'underline' : undefined,
-      color: cellStyle.fontColor,
-      backgroundColor: cellStyle.backgroundColor,
-      textAlign: cellStyle.horizontalAlign,
-      display: cellStyle.verticalAlign ? 'flex' : undefined,
-      alignItems: cellStyle.verticalAlign === 'top' ? 'flex-start'
-        : cellStyle.verticalAlign === 'bottom' ? 'flex-end'
-        : cellStyle.verticalAlign === 'middle' ? 'center'
+      fontFamily: cellStyle?.fontName,
+      fontSize: cellStyle?.fontSize ? `${cellStyle.fontSize}px` : undefined,
+      fontWeight: cellStyle?.fontBold ? 'bold' : undefined,
+      fontStyle: cellStyle?.fontItalic ? 'italic' : undefined,
+      textDecoration: cellStyle?.fontUnderline ? 'underline' : undefined,
+      color: cellStyle?.fontColor,
+      backgroundColor: cellStyle?.backgroundColor,
+      textAlign: (cellStyle?.horizontalAlign && ['left', 'center', 'right', 'justify'].includes(cellStyle.horizontalAlign))
+        ? cellStyle.horizontalAlign as React.CSSProperties['textAlign']
+        : undefined,
+      whiteSpace: cellStyle?.wrapText ? 'normal' : 'nowrap',
+      display: cellStyle?.verticalAlign ? 'flex' : undefined,
+      alignItems: cellStyle?.verticalAlign === 'top' ? 'flex-start'
+        : cellStyle?.verticalAlign === 'bottom' ? 'flex-end'
+        : (cellStyle && (cellStyle.verticalAlign === 'center' || cellStyle.verticalAlign === 'justify' || cellStyle.verticalAlign === 'distributed')) ? 'center'
         : undefined,
     };
 
+    // ===== APPLY MERGED CELL SIZE =====
+    if (mergedSize) {
+      // Растянуть ячейку на несколько строк/колонок
+      customStyle.gridColumn = `span ${mergedSize.colSpan}`;
+      customStyle.gridRow = `span ${mergedSize.rowSpan}`;
+      customStyle.zIndex = 10; // Поверх других ячеек
+    }
+
     // Apply borders if present
-    if (cellStyle.borderTop) {
+    if (cellStyle?.borderTop) {
       const borderWidth = cellStyle.borderTop.style === 'medium' ? '2px'
         : cellStyle.borderTop.style === 'thick' ? '3px'
         : '1px';
@@ -210,7 +236,7 @@ export function EditableGridView({
         : 'solid';
       customStyle.borderTop = `${borderWidth} ${borderStyle} ${cellStyle.borderTop.color || '#000000'}`;
     }
-    if (cellStyle.borderRight) {
+    if (cellStyle?.borderRight) {
       const borderWidth = cellStyle.borderRight.style === 'medium' ? '2px'
         : cellStyle.borderRight.style === 'thick' ? '3px'
         : '1px';
@@ -220,7 +246,7 @@ export function EditableGridView({
         : 'solid';
       customStyle.borderRight = `${borderWidth} ${borderStyle} ${cellStyle.borderRight.color || '#000000'}`;
     }
-    if (cellStyle.borderBottom) {
+    if (cellStyle?.borderBottom) {
       const borderWidth = cellStyle.borderBottom.style === 'medium' ? '2px'
         : cellStyle.borderBottom.style === 'thick' ? '3px'
         : '1px';
@@ -230,7 +256,7 @@ export function EditableGridView({
         : 'solid';
       customStyle.borderBottom = `${borderWidth} ${borderStyle} ${cellStyle.borderBottom.color || '#000000'}`;
     }
-    if (cellStyle.borderLeft) {
+    if (cellStyle?.borderLeft) {
       const borderWidth = cellStyle.borderLeft.style === 'medium' ? '2px'
         : cellStyle.borderLeft.style === 'thick' ? '3px'
         : '1px';

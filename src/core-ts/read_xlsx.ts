@@ -1,6 +1,18 @@
 import { ZipReader } from './zip';
 import { XmlSaxParser } from './xml_sax';
-import type { WorkbookModel, SheetModel, CellData, CellXfsStyle, DefinedName } from './types';
+import type {
+  WorkbookModel,
+  SheetModel,
+  CellData,
+  CellXfsStyle,
+  DefinedName,
+  Font,
+  Fill,
+  Border,
+  BorderEdge,
+  CellXf,
+  Alignment,
+} from './types';
 
 export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookModel> {
   const zip = new ZipReader(buffer);
@@ -13,6 +25,10 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
     numFmts: new Map(),
     styles: [],
     definedNames: [],
+    fonts: [],
+    fills: [],
+    borders: [],
+    cellXfs: [],
   };
 
   // 1. Parse sharedStrings
@@ -24,9 +40,13 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
   // 2. Parse styles
   const stylesData = entries.get('xl/styles.xml');
   if (stylesData) {
-    const { numFmts, styles } = parseStyles(stylesData);
+    const { numFmts, styles, fonts, fills, borders, cellXfs } = parseStyles(stylesData);
     model.numFmts = numFmts;
-    model.styles = styles;
+    model.styles = styles;       // Старый формат (для совместимости)
+    model.fonts = fonts;          // НОВОЕ
+    model.fills = fills;          // НОВОЕ
+    model.borders = borders;      // НОВОЕ
+    model.cellXfs = cellXfs;      // НОВОЕ
   }
 
   // 3. Parse workbook (sheets list, defined names)
@@ -95,44 +115,193 @@ function parseSharedStrings(data: Uint8Array): string[] {
   return strings;
 }
 
-function parseStyles(data: Uint8Array): { numFmts: Map<number, string>; styles: CellXfsStyle[] } {
+function parseStyles(data: Uint8Array): {
+  numFmts: Map<number, string>;
+  styles: CellXfsStyle[];
+  fonts: Font[];
+  fills: Fill[];
+  borders: Border[];
+  cellXfs: CellXf[];
+} {
   const numFmts = new Map<number, string>();
   const styles: CellXfsStyle[] = [];
+  const fonts: Font[] = [];
+  const fills: Fill[] = [];
+  const borders: Border[] = [];
+  const cellXfs: CellXf[] = [];
+
   const parser = new XmlSaxParser();
+
   let inNumFmts = false;
+  let inFonts = false;
+  let inFills = false;
+  let inBorders = false;
   let inCellXfs = false;
+
+  let currentFont: Partial<Font> | null = null;
+  let currentFill: Partial<Fill> | null = null;
+  let currentBorder: Partial<Border> | null = null;
+  let currentCellXf: Partial<CellXf> | null = null;
+  let currentAlignment: Partial<Alignment> | null = null;
+
+  // Для border edges
+  let currentBorderEdge: Partial<BorderEdge> | null = null;
+  let borderEdgeType: 'top' | 'right' | 'bottom' | 'left' | 'diagonal' | null = null;
 
   parser.parse(data, {
     onStartElement: (name, attrs) => {
+      // ===== NUM FMTS =====
       if (name === 'numFmts') {
         inNumFmts = true;
-      } else if (name === 'cellXfs') {
-        inCellXfs = true;
       } else if (name === 'numFmt' && inNumFmts) {
         const id = parseInt(attrs.get('numFmtId') || '0');
         const code = attrs.get('formatCode') || '';
         numFmts.set(id, code);
+      }
+
+      // ===== FONTS =====
+      else if (name === 'fonts') {
+        inFonts = true;
+      } else if (name === 'font' && inFonts) {
+        currentFont = {
+          id: fonts.length,
+          name: 'Calibri',
+          size: 11,
+          bold: false,
+          italic: false,
+          underline: false,
+          strikethrough: false,
+          color: 'FF000000',
+        };
+      } else if (currentFont) {
+        if (name === 'name') {
+          currentFont.name = attrs.get('val') || 'Calibri';
+        } else if (name === 'sz') {
+          currentFont.size = parseFloat(attrs.get('val') || '11');
+        } else if (name === 'b') {
+          currentFont.bold = true;
+        } else if (name === 'i') {
+          currentFont.italic = true;
+        } else if (name === 'u') {
+          currentFont.underline = true;
+        } else if (name === 'strike') {
+          currentFont.strikethrough = true;
+        } else if (name === 'color') {
+          currentFont.color = attrs.get('rgb') || attrs.get('theme') || 'FF000000';
+        }
+      }
+
+      // ===== FILLS =====
+      else if (name === 'fills') {
+        inFills = true;
+      } else if (name === 'fill' && inFills) {
+        currentFill = {
+          id: fills.length,
+          patternType: 'none',
+        };
+      } else if (currentFill && name === 'patternFill') {
+        currentFill.patternType = (attrs.get('patternType') || 'none') as any;
+      } else if (currentFill && name === 'fgColor') {
+        currentFill.fgColor = attrs.get('rgb') || attrs.get('theme');
+      } else if (currentFill && name === 'bgColor') {
+        currentFill.bgColor = attrs.get('rgb') || attrs.get('theme');
+      }
+
+      // ===== BORDERS =====
+      else if (name === 'borders') {
+        inBorders = true;
+      } else if (name === 'border' && inBorders) {
+        currentBorder = {
+          id: borders.length,
+        };
+      } else if (currentBorder && ['left', 'right', 'top', 'bottom', 'diagonal'].includes(name)) {
+        borderEdgeType = name as any;
+        const style = attrs.get('style');
+        if (style) {
+          currentBorderEdge = { style: style as any };
+        } else {
+          currentBorderEdge = null; // Edge без стиля = нет границы
+        }
+      } else if (currentBorderEdge && name === 'color') {
+        currentBorderEdge.color = attrs.get('rgb') || attrs.get('theme');
+      }
+
+      // ===== CELLXFS =====
+      else if (name === 'cellXfs') {
+        inCellXfs = true;
       } else if (name === 'xf' && inCellXfs) {
-        const style: CellXfsStyle = {
+        currentCellXf = {
+          id: cellXfs.length,
           numFmtId: attrs.has('numFmtId') ? parseInt(attrs.get('numFmtId')!) : undefined,
           fontId: attrs.has('fontId') ? parseInt(attrs.get('fontId')!) : undefined,
           fillId: attrs.has('fillId') ? parseInt(attrs.get('fillId')!) : undefined,
           borderId: attrs.has('borderId') ? parseInt(attrs.get('borderId')!) : undefined,
           xfId: attrs.has('xfId') ? parseInt(attrs.get('xfId')!) : undefined,
+          applyFont: attrs.get('applyFont') === '1',
+          applyFill: attrs.get('applyFill') === '1',
+          applyBorder: attrs.get('applyBorder') === '1',
+          applyAlignment: attrs.get('applyAlignment') === '1',
+          applyNumberFormat: attrs.get('applyNumberFormat') === '1',
         };
-        styles.push(style);
+
+        // Также сохраняем в старый формат для обратной совместимости
+        const oldStyle: CellXfsStyle = {
+          numFmtId: currentCellXf.numFmtId,
+          fontId: currentCellXf.fontId,
+          fillId: currentCellXf.fillId,
+          borderId: currentCellXf.borderId,
+          xfId: currentCellXf.xfId,
+        };
+        styles.push(oldStyle);
+      } else if (currentCellXf && name === 'alignment') {
+        currentAlignment = {
+          horizontal: attrs.get('horizontal') as any,
+          vertical: attrs.get('vertical') as any,
+          wrapText: attrs.get('wrapText') === '1',
+          textRotation: attrs.has('textRotation') ? parseInt(attrs.get('textRotation')!) : undefined,
+          indent: attrs.has('indent') ? parseInt(attrs.get('indent')!) : undefined,
+          shrinkToFit: attrs.get('shrinkToFit') === '1',
+        };
       }
     },
+
     onEndElement: (name) => {
       if (name === 'numFmts') {
         inNumFmts = false;
+      } else if (name === 'fonts') {
+        inFonts = false;
+      } else if (name === 'font' && currentFont) {
+        fonts.push(currentFont as Font);
+        currentFont = null;
+      } else if (name === 'fills') {
+        inFills = false;
+      } else if (name === 'fill' && currentFill) {
+        fills.push(currentFill as Fill);
+        currentFill = null;
+      } else if (name === 'borders') {
+        inBorders = false;
+      } else if (name === 'border' && currentBorder) {
+        borders.push(currentBorder as Border);
+        currentBorder = null;
+      } else if (['left', 'right', 'top', 'bottom', 'diagonal'].includes(name) && borderEdgeType) {
+        if (currentBorderEdge && currentBorder) {
+          currentBorder[borderEdgeType] = currentBorderEdge as BorderEdge;
+        }
+        currentBorderEdge = null;
+        borderEdgeType = null;
       } else if (name === 'cellXfs') {
         inCellXfs = false;
+      } else if (name === 'alignment' && currentAlignment && currentCellXf) {
+        currentCellXf.alignment = currentAlignment as Alignment;
+        currentAlignment = null;
+      } else if (name === 'xf' && currentCellXf) {
+        cellXfs.push(currentCellXf as CellXf);
+        currentCellXf = null;
       }
     },
   });
 
-  return { numFmts, styles };
+  return { numFmts, styles, fonts, fills, borders, cellXfs };
 }
 
 function parseWorkbook(data: Uint8Array): { sheets: Array<{ id: string; name: string; sheetId: number }>; definedNames: DefinedName[] } {
@@ -174,6 +343,8 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
   let inSheetData = false;
   let currentCell: Partial<CellData> | null = null;
   let currentCellRef = '';
+  let inFormula = false;
+  let formulaText = '';
 
   parser.parse(data, {
     onStartElement: (name, attrs) => {
@@ -217,7 +388,16 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
           currentCell = null;
         }
       } else if (name === 'f' && currentCell) {
-        // Formula will be captured in text
+        // Formula tag started
+        inFormula = true;
+        formulaText = '';
+
+        // Handle formula attributes (for shared formulas, array formulas, etc.)
+        // const t = attrs.get('t'); // Formula type: normal, shared, array
+        // const ref = attrs.get('ref'); // For array formulas
+        // const si = attrs.get('si'); // Shared formula index
+
+        // Store formula type metadata if needed (for now we just capture the formula text)
       } else if (name === 'mergeCell') {
         const ref = attrs.get('ref') || '';
         sheet.mergedRanges.push({ ref });
@@ -244,7 +424,10 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
       }
     },
     onText: (text) => {
-      if (currentCell) {
+      if (inFormula) {
+        // Capture formula text
+        formulaText += text;
+      } else if (currentCell) {
         try {
           if (currentCell.type === 's') {
             // Shared string index
@@ -271,6 +454,13 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
     onEndElement: (name) => {
       if (name === 'sheetData') {
         inSheetData = false;
+      } else if (name === 'f' && inFormula) {
+        // Formula tag ended, save formula to current cell
+        if (currentCell && formulaText) {
+          currentCell.formula = formulaText;
+        }
+        inFormula = false;
+        formulaText = '';
       } else if (name === 'c' && currentCell) {
         sheet.cells.set(currentCellRef, currentCell as CellData);
         currentCell = null;

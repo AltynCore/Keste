@@ -262,6 +262,16 @@ function generateWorksheet(sheet: SheetModel, sharedStrings: Map<string, number>
   });
 
   xml += '  </sheetData>\n';
+
+  // Merged cells
+  if (sheet.mergedRanges && sheet.mergedRanges.length > 0) {
+    xml += `  <mergeCells count="${sheet.mergedRanges.length}">\n`;
+    sheet.mergedRanges.forEach(range => {
+      xml += `    <mergeCell ref="${range.ref}"/>\n`;
+    });
+    xml += '  </mergeCells>\n';
+  }
+
   xml += '</worksheet>';
 
   return xml;

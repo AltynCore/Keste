@@ -559,15 +559,17 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onBold={toggleBold}
         onItalic={toggleItalic}
         onUnderline={toggleUnderline}
-        onAlignLeft={() => setAlignment('left')}
-        onAlignCenter={() => setAlignment('center')}
-        onAlignRight={() => setAlignment('right')}
+        onAlignLeft={() => setAlignment('left' as const)}
+        onAlignCenter={() => setAlignment('center' as const)}
+        onAlignRight={() => setAlignment('right' as const)}
         onFontColor={setFontColor}
         onBackgroundColor={setBackgroundColor}
         isBold={currentCellStyle.fontBold}
         isItalic={currentCellStyle.fontItalic}
         isUnderline={currentCellStyle.fontUnderline}
-        currentAlign={currentCellStyle.horizontalAlign || 'left'}
+        currentAlign={(currentCellStyle.horizontalAlign && ['left', 'center', 'right'].includes(currentCellStyle.horizontalAlign))
+          ? (currentCellStyle.horizontalAlign as 'left' | 'center' | 'right')
+          : 'left'}
         onFindReplace={() => setFindReplaceOpen(true)}
         onDataValidation={() => setDataValidationOpen(true)}
         onConditionalFormatting={() => setConditionalFormattingOpen(true)}
@@ -633,6 +635,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           {currentSheet && (
             <EditableGridView
               sheet={currentSheet}
+              workbook={workbook}
               editingState={editingState}
               selectedCell={selectedCell}
               selection={selection}

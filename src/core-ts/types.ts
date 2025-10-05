@@ -8,6 +8,12 @@ export interface WorkbookModel {
   namedRanges?: any[]; // NamedRange[] - will be imported from formula-types
   comments?: any[]; // CellComment[] - will be imported from comment-types
   changeTracking?: any; // ChangeTrackingState - will be imported from comment-types
+
+  // ===== НОВОЕ: Полная поддержка стилей =====
+  fonts?: Font[];
+  fills?: Fill[];
+  borders?: Border[];
+  cellXfs?: CellXf[];
 }
 
 export interface SheetModel {
@@ -33,7 +39,7 @@ export interface CellData {
 }
 
 export interface BorderStyle {
-  style?: 'thin' | 'medium' | 'thick' | 'dashed' | 'dotted' | 'double';
+  style?: 'thin' | 'medium' | 'thick' | 'dashed' | 'dotted' | 'double' | 'hair' | 'mediumDashed' | 'dashDot' | 'mediumDashDot' | 'dashDotDot' | 'mediumDashDotDot' | 'slantDashDot';
   color?: string;
 }
 
@@ -44,14 +50,18 @@ export interface CellStyle {
   fontBold?: boolean;
   fontItalic?: boolean;
   fontUnderline?: boolean;
+  fontStrikethrough?: boolean;
   fontColor?: string;
 
   // Fill
   backgroundColor?: string;
 
   // Alignment
-  horizontalAlign?: 'left' | 'center' | 'right';
-  verticalAlign?: 'top' | 'middle' | 'bottom';
+  horizontalAlign?: 'left' | 'center' | 'right' | 'justify' | 'distributed' | 'fill' | 'centerContinuous';
+  verticalAlign?: 'top' | 'center' | 'bottom' | 'justify' | 'distributed';
+  wrapText?: boolean;
+  textRotation?: number;
+  indent?: number;
 
   // Border
   borderTop?: BorderStyle;
@@ -110,4 +120,89 @@ export interface CellView {
   value: string;
   formula?: string;
   style?: CellXfsStyle;
+}
+
+// ===== НОВЫЕ ИНТЕРФЕЙСЫ ДЛЯ ПОЛНОЙ ПОДДЕРЖКИ СТИЛЕЙ =====
+
+/**
+ * Font definition from xl/styles.xml <fonts>
+ */
+export interface Font {
+  id: number;
+  name: string;           // "Calibri", "Arial"
+  size: number;           // 11, 14, 16
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  strikethrough: boolean;
+  color: string;          // ARGB format: "FF000000"
+}
+
+/**
+ * Fill definition from xl/styles.xml <fills>
+ */
+export interface Fill {
+  id: number;
+  patternType: 'none' | 'solid' | 'gray125' | 'lightGray' | 'darkGray' | 'mediumGray' |
+               'lightDown' | 'lightUp' | 'lightGrid' | 'lightTrellis' | 'lightHorizontal' |
+               'lightVertical';
+  fgColor?: string;       // Foreground color (ARGB)
+  bgColor?: string;       // Background color (ARGB)
+}
+
+/**
+ * Border edge (single side)
+ */
+export interface BorderEdge {
+  style: 'thin' | 'medium' | 'thick' | 'dashed' | 'dotted' | 'double' | 'hair' |
+         'mediumDashed' | 'dashDot' | 'mediumDashDot' | 'dashDotDot' |
+         'mediumDashDotDot' | 'slantDashDot';
+  color?: string;         // ARGB format
+}
+
+/**
+ * Border definition from xl/styles.xml <borders>
+ */
+export interface Border {
+  id: number;
+  top?: BorderEdge;
+  right?: BorderEdge;
+  bottom?: BorderEdge;
+  left?: BorderEdge;
+  diagonal?: BorderEdge;
+  diagonalUp?: boolean;
+  diagonalDown?: boolean;
+}
+
+/**
+ * Alignment settings
+ */
+export interface Alignment {
+  horizontal?: 'left' | 'center' | 'right' | 'justify' | 'distributed' | 'fill' | 'centerContinuous';
+  vertical?: 'top' | 'center' | 'bottom' | 'justify' | 'distributed';
+  wrapText?: boolean;
+  textRotation?: number;
+  indent?: number;
+  shrinkToFit?: boolean;
+  readingOrder?: number;
+}
+
+/**
+ * Cell format from xl/styles.xml <cellXfs>
+ * Расширенная версия CellXfsStyle с полной информацией
+ */
+export interface CellXf {
+  id: number;
+  numFmtId?: number;
+  fontId?: number;
+  fillId?: number;
+  borderId?: number;
+  xfId?: number;
+  applyFont?: boolean;
+  applyFill?: boolean;
+  applyBorder?: boolean;
+  applyAlignment?: boolean;
+  applyNumberFormat?: boolean;
+  applyProtection?: boolean;
+  alignment?: Alignment;
 }
