@@ -5,6 +5,7 @@ export interface WorkbookModel {
   numFmts: Map<number, string>;
   styles: CellXfsStyle[];
   definedNames: DefinedName[];
+  namedRanges?: any[]; // NamedRange[] - will be imported from formula-types
 }
 
 export interface SheetModel {

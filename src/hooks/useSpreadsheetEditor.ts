@@ -782,6 +782,32 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     });
   }, []);
 
+  // Add named range
+  const addNamedRange = useCallback((namedRange: any) => {
+    setWorkbook(prev => ({
+      ...prev,
+      namedRanges: [...(prev.namedRanges || []), namedRange],
+    }));
+  }, []);
+
+  // Update named range
+  const updateNamedRange = useCallback((id: string, updates: Partial<any>) => {
+    setWorkbook(prev => ({
+      ...prev,
+      namedRanges: (prev.namedRanges || []).map(nr =>
+        nr.id === id ? { ...nr, ...updates } : nr
+      ),
+    }));
+  }, []);
+
+  // Delete named range
+  const deleteNamedRange = useCallback((id: string) => {
+    setWorkbook(prev => ({
+      ...prev,
+      namedRanges: (prev.namedRanges || []).filter(nr => nr.id !== id),
+    }));
+  }, []);
+
   return {
     workbook,
     setWorkbook,
@@ -825,6 +851,9 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     addChart,
     updateChart,
     deleteChart,
+    addNamedRange,
+    updateNamedRange,
+    deleteNamedRange,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
   };

@@ -11,6 +11,8 @@ import { DataValidationDialog } from './DataValidationDialog';
 import { ConditionalFormattingDialog } from './ConditionalFormattingDialog';
 import { ChartBuilder } from './ChartBuilder';
 import { ChartRenderer } from './ChartRenderer';
+import { FormulaLibrary } from './FormulaLibrary';
+import { NameManager } from './NameManager';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
@@ -33,6 +35,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [dataValidationOpen, setDataValidationOpen] = useState(false);
   const [conditionalFormattingOpen, setConditionalFormattingOpen] = useState(false);
   const [chartBuilderOpen, setChartBuilderOpen] = useState(false);
+  const [formulaLibraryOpen, setFormulaLibraryOpen] = useState(false);
+  const [nameManagerOpen, setNameManagerOpen] = useState(false);
+  const [showFormulas, setShowFormulas] = useState(false);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -69,6 +74,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     deleteColumn,
     addChart,
     deleteChart,
+    addNamedRange,
+    updateNamedRange,
+    deleteNamedRange,
     canUndo,
     canRedo,
   } = useSpreadsheetEditor(initialWorkbook);
@@ -419,6 +427,28 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     });
   };
 
+  // Phase 9: Named Range handlers
+  const handleCreateNamedRange = (range: Omit<any, 'id' | 'createdAt'>) => {
+    const newRange = {
+      ...range,
+      id: `range-${Date.now()}`,
+      createdAt: Date.now(),
+    };
+    addNamedRange(newRange);
+    toast({
+      title: "Named Range Created",
+      description: `"${range.name}" created successfully`,
+    });
+  };
+
+  const handleInsertFormula = (formula: string) => {
+    if (selectedCell && editingState.isEditing) {
+      updateEditingValue(formula);
+    } else if (selectedCell) {
+      startEditing(selectedCell, formula);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Excel-like Ribbon */}
@@ -456,6 +486,10 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
         onInsertColumn={handleInsertColumn}
         onDeleteColumn={handleDeleteColumn}
         onCreateChart={() => setChartBuilderOpen(true)}
+        onFormulaLibrary={() => setFormulaLibraryOpen(true)}
+        onNameManager={() => setNameManagerOpen(true)}
+        onToggleShowFormulas={() => setShowFormulas(!showFormulas)}
+        showFormulas={showFormulas}
       />
 
       {/* Formula Bar - Excel position */}
@@ -597,6 +631,30 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           ))}
         </div>
       )}
+
+      {/* Phase 9: Formula Library Dialog */}
+      <FormulaLibrary
+        open={formulaLibraryOpen}
+        onOpenChange={setFormulaLibraryOpen}
+        onInsertFormula={handleInsertFormula}
+      />
+
+      {/* Phase 9: Name Manager Dialog */}
+      <NameManager
+        open={nameManagerOpen}
+        onOpenChange={setNameManagerOpen}
+        namedRanges={workbook.namedRanges || []}
+        sheets={workbook.sheets.map(s => ({ id: s.id, name: s.name }))}
+        onCreateRange={handleCreateNamedRange}
+        onUpdateRange={updateNamedRange}
+        onDeleteRange={deleteNamedRange}
+        onNavigateToRange={(range) => {
+          toast({
+            title: "Navigate to Range",
+            description: `Navigating to ${range.name}: ${range.range}`,
+          });
+        }}
+      />
     </div>
   );
 }

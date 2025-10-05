@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3 } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3, Code2, BookmarkPlus, Eye } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -41,6 +41,10 @@ interface ExportBarProps {
   onInsertColumn?: () => void;
   onDeleteColumn?: () => void;
   onCreateChart?: () => void;
+  onFormulaLibrary?: () => void;
+  onNameManager?: () => void;
+  onToggleShowFormulas?: () => void;
+  showFormulas?: boolean;
 }
 
 function ExportBar({
@@ -77,6 +81,10 @@ function ExportBar({
   onInsertColumn,
   onDeleteColumn,
   onCreateChart,
+  onFormulaLibrary,
+  onNameManager,
+  onToggleShowFormulas,
+  showFormulas = false,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -504,6 +512,71 @@ function ExportBar({
               <div className="text-center">
                 <div className="font-semibold">Insert Chart</div>
                 <div className="text-xs opacity-70">Create visualization</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 9: Formula Tools */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onFormulaLibrary}
+                disabled={!onFormulaLibrary}
+              >
+                <Code2 className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Formula Library</div>
+                <div className="text-xs opacity-70">Browse functions</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onNameManager}
+                disabled={!onNameManager}
+              >
+                <BookmarkPlus className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Name Manager</div>
+                <div className="text-xs opacity-70">Manage named ranges</div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={showFormulas ? "secondary" : "ghost"}
+                size="icon"
+                className="h-7 w-7"
+                onClick={onToggleShowFormulas}
+                disabled={!onToggleShowFormulas}
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Show Formulas</div>
+                <div className="text-xs opacity-70">Toggle formula view</div>
               </div>
             </TooltipContent>
           </Tooltip>
