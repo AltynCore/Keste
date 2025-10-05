@@ -104,7 +104,10 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     rejectAllChanges,
   } = useSpreadsheetEditor(initialWorkbook);
 
-  const currentSheet = workbook.sheets[selectedSheetIndex];
+  // Safety check for empty sheets array
+  const currentSheet = workbook.sheets && workbook.sheets.length > 0
+    ? workbook.sheets[Math.min(selectedSheetIndex, workbook.sheets.length - 1)]
+    : undefined;
 
   // Initialize data management hook
   const dataManagement = useDataManagement(currentSheet?.id || '');
@@ -472,6 +475,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
 
   // Phase 8: Chart handlers
   const handleCreateChart = (config: ChartConfig) => {
+    if (!currentSheet) return;
     addChart(currentSheet.id, config);
     toast({
       title: "Chart Created",
@@ -480,6 +484,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   };
 
   const handleDeleteChart = (chartId: string) => {
+    if (!currentSheet) return;
     deleteChart(currentSheet.id, chartId);
     toast({
       title: "Chart Deleted",
@@ -662,8 +667,9 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
       <FindReplaceDialog
         open={findReplaceOpen}
         onOpenChange={setFindReplaceOpen}
-        onFind={(options) => dataManagement.find(currentSheet, options)}
+        onFind={(options) => currentSheet ? dataManagement.find(currentSheet, options) : []}
         onReplace={(result, options) => {
+          if (!currentSheet) return;
           const cell = currentSheet.cells.get(`${result.row}-${result.col}`);
           if (cell) {
             const newValue = dataManagement.replace(cell, options);
@@ -671,6 +677,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           }
         }}
         onReplaceAll={(options) => {
+          if (!currentSheet) return;
           const results = dataManagement.find(currentSheet, options);
           results.forEach((result) => {
             const cell = currentSheet.cells.get(`${result.row}-${result.col}`);

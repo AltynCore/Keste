@@ -15,8 +15,13 @@ import type {
 } from './types';
 
 export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookModel> {
+  console.log('Starting XLSX import, buffer size:', buffer.byteLength);
+
   const zip = new ZipReader(buffer);
   const entries = await zip.readEntries();
+
+  console.log('ZIP entries found:', entries.size);
+  console.log('Entry names:', Array.from(entries.keys()).join(', '));
 
   const model: WorkbookModel = {
     id: crypto.randomUUID(),
@@ -49,7 +54,27 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
     model.cellXfs = cellXfs;      // НОВОЕ
   }
 
-  // 3. Parse workbook (sheets list, defined names)
+  // 3. Parse workbook relationships to map rId to actual file paths
+  const relsData = entries.get('xl/_rels/workbook.xml.rels');
+  const rIdMap = new Map<string, string>();
+
+  if (relsData) {
+    const relsParser = new XmlSaxParser();
+    relsParser.parse(relsData, {
+      onStartElement: (name, attrs) => {
+        if (name === 'Relationship') {
+          const id = attrs.get('Id') || '';
+          const target = attrs.get('Target') || '';
+          if (id && target) {
+            rIdMap.set(id, target);
+            console.log(`Relationship: ${id} -> ${target}`);
+          }
+        }
+      },
+    });
+  }
+
+  // 4. Parse workbook (sheets list, defined names)
   const wbData = entries.get('xl/workbook.xml');
   if (!wbData) {
     throw new Error('workbook.xml not found');
@@ -58,9 +83,15 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
   const { sheets, definedNames } = parseWorkbook(wbData);
   model.definedNames = definedNames;
 
-  // 4. Parse each sheet
+  // 5. Parse each sheet using relationships
   for (const sheetInfo of sheets) {
-    const sheetData = entries.get(`xl/worksheets/sheet${sheetInfo.sheetId}.xml`);
+    // Get actual file path from relationship
+    const relTarget = rIdMap.get(sheetInfo.id);
+    const sheetPath = relTarget ? `xl/${relTarget}` : `xl/worksheets/sheet${sheetInfo.sheetId}.xml`;
+
+    console.log(`Looking for sheet "${sheetInfo.name}" (${sheetInfo.id}) at: ${sheetPath}`);
+
+    const sheetData = entries.get(sheetPath);
     if (sheetData) {
       try {
         const sheet = parseSheet(sheetData, sheetInfo.id, sheetInfo.name, sheetInfo.sheetId, model.sharedStrings);
@@ -80,6 +111,31 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
       }
     }
   }
+
+  // Validate model before returning
+  if (!model.sheets || model.sheets.length === 0) {
+    console.warn('No sheets found in workbook');
+    // Create a default empty sheet
+    model.sheets = [{
+      id: 'sheet1',
+      name: 'Sheet1',
+      sheetId: 1,
+      cells: new Map(),
+      mergedRanges: [],
+      rowProps: new Map(),
+      colProps: new Map(),
+    }];
+  }
+
+  // Ensure required arrays are initialized
+  if (!model.sharedStrings) model.sharedStrings = [];
+  if (!model.styles) model.styles = [];
+  if (!model.definedNames) model.definedNames = [];
+  if (!model.fonts) model.fonts = [];
+  if (!model.fills) model.fills = [];
+  if (!model.borders) model.borders = [];
+  if (!model.cellXfs) model.cellXfs = [];
+  if (!model.numFmts) model.numFmts = new Map();
 
   return model;
 }
@@ -308,15 +364,27 @@ function parseWorkbook(data: Uint8Array): { sheets: Array<{ id: string; name: st
   const sheets: Array<{ id: string; name: string; sheetId: number }> = [];
   const definedNames: DefinedName[] = [];
   const parser = new XmlSaxParser();
+  let elementCount = 0;
+  let sheetTagsSeen = 0;
 
   parser.parse(data, {
     onStartElement: (name, attrs) => {
+      elementCount++;
+
+      // DEBUG: Log first 20 elements
+      if (elementCount <= 20) {
+        console.log(`parseWorkbook element #${elementCount}: <${name}>, attrs:`, Array.from(attrs.entries()));
+      }
+
       if (name === 'sheet') {
-        sheets.push({
+        sheetTagsSeen++;
+        const sheetData = {
           id: attrs.get('r:id') || attrs.get('id') || '',
           name: attrs.get('name') || '',
           sheetId: parseInt(attrs.get('sheetId') || '1'),
-        });
+        };
+        console.log(`Found sheet #${sheetTagsSeen}:`, sheetData);
+        sheets.push(sheetData);
       } else if (name === 'definedName') {
         const dnName = attrs.get('name') || '';
         const localSheetId = attrs.has('localSheetId') ? parseInt(attrs.get('localSheetId')!) : undefined;
@@ -325,10 +393,14 @@ function parseWorkbook(data: Uint8Array): { sheets: Array<{ id: string; name: st
     },
   });
 
+  console.log(`parseWorkbook complete: ${sheets.length} sheets found, ${elementCount} total elements`);
+
   return { sheets, definedNames };
 }
 
 function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number, sharedStrings: string[]): SheetModel {
+  console.log(`Parsing sheet: ${name}, data size: ${data.byteLength}, sharedStrings: ${sharedStrings.length}`);
+
   const sheet: SheetModel = {
     id,
     name,
@@ -469,6 +541,8 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
     },
   });
 
+  console.log(`Sheet ${name} parsed: ${sheet.cells.size} cells, ${sheet.mergedRanges.length} merged ranges`);
+
   return sheet;
 }
 
@@ -479,24 +553,38 @@ function parseCellRef(ref: string): { row: number; col: number } {
   const colStr = match[1];
   const rowStr = match[2];
 
+  // Limit column string length to prevent overflow
+  if (colStr.length > 3) {
+    console.warn(`Column string too long: ${colStr}`);
+    return { row: 0, col: 0 };
+  }
+
   let col = 0;
   for (let i = 0; i < colStr.length; i++) {
     col = col * 26 + (colStr.charCodeAt(i) - 64);
   }
 
-  const row = parseInt(rowStr);
+  // Limit row string length to prevent overflow
+  if (rowStr.length > 7) {
+    console.warn(`Row string too long: ${rowStr}`);
+    return { row: 0, col: 0 };
+  }
+
+  const row = parseInt(rowStr, 10);
+
+  // Check for NaN or Infinity
+  if (!isFinite(row) || !isFinite(col)) {
+    console.warn(`Non-finite values: row=${row}, col=${col}`);
+    return { row: 0, col: 0 };
+  }
 
   // Excel limits: max row = 1048576, max col = 16384 (XFD)
-  // Add safety limits to prevent memory issues
   const MAX_ROW = 1048576;
   const MAX_COL = 16384;
 
   if (row > MAX_ROW || col > MAX_COL || row < 1 || col < 1) {
-    console.warn(`Invalid cell reference: ${ref} (row: ${row}, col: ${col}). Clamping to valid range.`);
-    return { 
-      row: Math.max(1, Math.min(row, MAX_ROW)), 
-      col: Math.max(1, Math.min(col, MAX_COL)) 
-    };
+    console.warn(`Invalid cell reference: ${ref} (row: ${row}, col: ${col}). Skipping.`);
+    return { row: 0, col: 0 };
   }
 
   return { row, col };

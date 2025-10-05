@@ -80,7 +80,19 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     // Sync all cells to HyperFormula
     hf.batch(() => {
       currentSheet.cells.forEach((cellData, key) => {
-        const [row, col] = key.split('-').map(Number);
+        const parts = key.split('-');
+        if (parts.length !== 2) {
+          console.warn(`Invalid cell key: ${key}`);
+          return;
+        }
+
+        const [row, col] = parts.map(Number);
+
+        // Validate row and col
+        if (!isFinite(row) || !isFinite(col) || row < 1 || col < 1) {
+          console.warn(`Invalid cell coordinates from key ${key}: row=${row}, col=${col}`);
+          return;
+        }
         
         // ⚡ Convert 1-based to 0-based indexing for HyperFormula
         // Our workbook: A1 = row:1, col:1 (1-based)
@@ -122,6 +134,17 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
 
     const cellKey = `${position.row}-${position.col}`;
     const cell = sheet.cells.get(cellKey);
+
+    // DEBUG: Log for first few cells
+    if (position.row <= 3 && position.col <= 3) {
+      console.log(`getCellDisplayValue(${cellKey}):`, {
+        cell,
+        hasCell: !!cell,
+        value: cell?.value,
+        formula: cell?.formula,
+        type: cell?.type
+      });
+    }
 
     if (!cell) return '';
 

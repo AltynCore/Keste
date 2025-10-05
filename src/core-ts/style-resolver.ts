@@ -47,7 +47,10 @@ export function resolveCellStyle(
 
   // Получить CellXf по styleId
   const cellXf = workbook.cellXfs[cell.styleId];
-  if (!cellXf) return undefined;
+  if (!cellXf) {
+    console.warn(`CellXf not found for styleId ${cell.styleId}`);
+    return undefined;
+  }
 
   const style: CellStyle = {};
 

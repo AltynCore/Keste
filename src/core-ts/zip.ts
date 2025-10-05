@@ -30,6 +30,12 @@ export class ZipReader {
       const commentLen = this.view.getUint16(offset + 32, true);
       const localHeaderOffset = this.view.getUint32(offset + 42, true);
 
+      // Validate lengths to prevent "Invalid array length" errors
+      if (nameLen < 0 || nameLen > 1000 || offset + 46 + nameLen > this.buffer.byteLength) {
+        console.warn(`Invalid nameLen: ${nameLen} at offset ${offset}`);
+        continue;
+      }
+
       const nameBytes = new Uint8Array(this.buffer, offset + 46, nameLen);
       const name = this.decoder.decode(nameBytes);
 
@@ -43,6 +49,13 @@ export class ZipReader {
         const localExtraLen = this.view.getUint16(localHeaderOffset + 28, true);
 
         const dataOffset = localHeaderOffset + 30 + localNameLen + localExtraLen;
+
+        // Validate compSize to prevent "Invalid array length" errors
+        if (compSize < 0 || compSize > this.buffer.byteLength || dataOffset + compSize > this.buffer.byteLength) {
+          console.warn(`Invalid compSize: ${compSize} for file ${name}`);
+          continue;
+        }
+
         const compData = new Uint8Array(this.buffer, dataOffset, compSize);
 
         // Decompress if needed

@@ -193,6 +193,11 @@ export function EditableGridView({
     const cellKey = `${position.row}-${position.col}`;
     const cellData = sheet.cells.get(cellKey);
 
+    // DEBUG: Log first few cells
+    if (rowIndex <= 2 && columnIndex <= 2) {
+      console.log(`Cell ${cellKey}: rawValue="${rawValue}", displayValue="${displayValue}", cellData:`, cellData);
+    }
+
     // НОВОЕ: Разрешаем стиль через style-resolver
     const cellStyle = cellData ? resolveCellStyle(cellData, workbook) : undefined;
 
