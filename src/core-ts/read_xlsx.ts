@@ -42,8 +42,22 @@ export async function readXlsxToModel(buffer: ArrayBuffer): Promise<WorkbookMode
   for (const sheetInfo of sheets) {
     const sheetData = entries.get(`xl/worksheets/sheet${sheetInfo.sheetId}.xml`);
     if (sheetData) {
-      const sheet = parseSheet(sheetData, sheetInfo.id, sheetInfo.name, sheetInfo.sheetId, model.sharedStrings);
-      model.sheets.push(sheet);
+      try {
+        const sheet = parseSheet(sheetData, sheetInfo.id, sheetInfo.name, sheetInfo.sheetId, model.sharedStrings);
+        model.sheets.push(sheet);
+      } catch (error) {
+        console.error(`Failed to parse sheet "${sheetInfo.name}":`, error);
+        // Create empty sheet as fallback
+        model.sheets.push({
+          id: sheetInfo.id,
+          name: sheetInfo.name,
+          sheetId: sheetInfo.sheetId,
+          cells: new Map(),
+          mergedRanges: [],
+          rowProps: new Map(),
+          colProps: new Map(),
+        });
+      }
     }
   }
 
@@ -178,18 +192,30 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
           });
         }
       } else if (name === 'c' && inSheetData) {
-        currentCellRef = attrs.get('r') || '';
-        const { row, col } = parseCellRef(currentCellRef);
-        const type = (attrs.get('t') || 'n') as CellData['type'];
-        const s = attrs.get('s');
+        try {
+          currentCellRef = attrs.get('r') || '';
+          const { row, col } = parseCellRef(currentCellRef);
+          
+          // Skip invalid cells
+          if (row === 0 || col === 0) {
+            currentCell = null;
+            return;
+          }
+          
+          const type = (attrs.get('t') || 'n') as CellData['type'];
+          const s = attrs.get('s');
 
-        currentCell = {
-          row,
-          col,
-          type,
-          value: null,
-          styleId: s ? parseInt(s) : undefined,
-        };
+          currentCell = {
+            row,
+            col,
+            type,
+            value: null,
+            styleId: s ? parseInt(s) : undefined,
+          };
+        } catch (error) {
+          console.warn(`Failed to parse cell ${attrs.get('r')}:`, error);
+          currentCell = null;
+        }
       } else if (name === 'f' && currentCell) {
         // Formula will be captured in text
       } else if (name === 'mergeCell') {
@@ -219,15 +245,25 @@ function parseSheet(data: Uint8Array, id: string, name: string, sheetId: number,
     },
     onText: (text) => {
       if (currentCell) {
-        if (currentCell.type === 's') {
-          // Shared string index
-          const idx = parseInt(text);
-          currentCell.value = sharedStrings[idx] || '';
-        } else if (currentCell.type === 'n') {
-          currentCell.value = parseFloat(text);
-        } else if (currentCell.type === 'b') {
-          currentCell.value = text === '1';
-        } else {
+        try {
+          if (currentCell.type === 's') {
+            // Shared string index
+            const idx = parseInt(text);
+            if (idx >= 0 && idx < sharedStrings.length) {
+              currentCell.value = sharedStrings[idx] || '';
+            } else {
+              currentCell.value = '';
+            }
+          } else if (currentCell.type === 'n') {
+            const num = parseFloat(text);
+            currentCell.value = isFinite(num) ? num : 0;
+          } else if (currentCell.type === 'b') {
+            currentCell.value = text === '1';
+          } else {
+            currentCell.value = text;
+          }
+        } catch (error) {
+          console.warn(`Failed to parse cell value:`, error);
           currentCell.value = text;
         }
       }
@@ -258,5 +294,20 @@ function parseCellRef(ref: string): { row: number; col: number } {
     col = col * 26 + (colStr.charCodeAt(i) - 64);
   }
 
-  return { row: parseInt(rowStr), col };
+  const row = parseInt(rowStr);
+
+  // Excel limits: max row = 1048576, max col = 16384 (XFD)
+  // Add safety limits to prevent memory issues
+  const MAX_ROW = 1048576;
+  const MAX_COL = 16384;
+
+  if (row > MAX_ROW || col > MAX_COL || row < 1 || col < 1) {
+    console.warn(`Invalid cell reference: ${ref} (row: ${row}, col: ${col}). Clamping to valid range.`);
+    return { 
+      row: Math.max(1, Math.min(row, MAX_ROW)), 
+      col: Math.max(1, Math.min(col, MAX_COL)) 
+    };
+  }
+
+  return { row, col };
 }

@@ -4,6 +4,7 @@
 )]
 
 mod cmds;
+mod sqlite_reader;
 mod sqlite_writer;
 
 fn main() {
@@ -11,7 +12,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             cmds::choose_open_file,
             cmds::choose_save_file,
-            cmds::save_sqlite
+            cmds::save_sqlite,
+            cmds::read_sqlite
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

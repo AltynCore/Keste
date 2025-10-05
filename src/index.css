@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable overscroll/rubber-band effect */
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
