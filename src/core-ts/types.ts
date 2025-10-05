@@ -6,6 +6,8 @@ export interface WorkbookModel {
   styles: CellXfsStyle[];
   definedNames: DefinedName[];
   namedRanges?: any[]; // NamedRange[] - will be imported from formula-types
+  comments?: any[]; // CellComment[] - will be imported from comment-types
+  changeTracking?: any; // ChangeTrackingState - will be imported from comment-types
 }
 
 export interface SheetModel {

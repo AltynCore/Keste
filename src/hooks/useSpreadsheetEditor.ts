@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { WorkbookModel, CellData, CellStyle, BorderStyle } from '../core-ts/types';
 import type { CellPosition, EditingState, CellEdit, UndoRedoState, Selection, NavigationDirection } from '../core-ts/editor-types';
+import type { CellComment, Comment, Change } from '../core-ts/comment-types';
 import { HyperFormula, SimpleCellAddress } from 'hyperformula';
 
 export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
@@ -882,5 +883,291 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     optimizeUndoStack,
     canUndo: undoRedoRef.current.undoStack.length > 0,
     canRedo: undoRedoRef.current.redoStack.length > 0,
+
+    // Phase 11: Comments
+    addCellComment,
+    addCommentToThread,
+    editComment,
+    deleteComment,
+    resolveCellComment,
+    unresolveCellComment,
+    getCellComment,
+
+    // Phase 11: Change Tracking
+    toggleChangeTracking,
+    addChange,
+    acceptChange,
+    rejectChange,
+    acceptAllChanges,
+    rejectAllChanges,
   };
+
+  // ==================== Phase 11: Comments ====================
+
+  function addCellComment(row: number, col: number, sheetId: string, author: string, content: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = newWorkbook.comments || [];
+
+      const newComment: CellComment = {
+        id: `comment-${Date.now()}`,
+        row,
+        col,
+        sheetId,
+        comments: [{
+          id: `msg-${Date.now()}`,
+          author,
+          content,
+          timestamp: Date.now(),
+        }],
+        resolved: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      newWorkbook.comments = [...comments, newComment];
+      return newWorkbook;
+    });
+  }
+
+  function addCommentToThread(cellCommentId: string, parentId: string, author: string, content: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = [...(newWorkbook.comments || [])];
+      const cellCommentIndex = comments.findIndex(c => c.id === cellCommentId);
+
+      if (cellCommentIndex === -1) return prev;
+
+      const cellComment = { ...comments[cellCommentIndex] };
+      const newComment: Comment = {
+        id: `msg-${Date.now()}`,
+        author,
+        content,
+        timestamp: Date.now(),
+        parentId: parentId || undefined,
+      };
+
+      cellComment.comments = [...cellComment.comments, newComment];
+      cellComment.updatedAt = Date.now();
+      comments[cellCommentIndex] = cellComment;
+      newWorkbook.comments = comments;
+
+      return newWorkbook;
+    });
+  }
+
+  function editComment(cellCommentId: string, commentId: string, newContent: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = [...(newWorkbook.comments || [])];
+      const cellCommentIndex = comments.findIndex(c => c.id === cellCommentId);
+
+      if (cellCommentIndex === -1) return prev;
+
+      const cellComment = { ...comments[cellCommentIndex] };
+      const commentIndex = cellComment.comments.findIndex((c: Comment) => c.id === commentId);
+
+      if (commentIndex === -1) return prev;
+
+      const comment = { ...cellComment.comments[commentIndex] };
+      comment.content = newContent;
+      comment.edited = true;
+      comment.editedAt = Date.now();
+
+      cellComment.comments = [...cellComment.comments];
+      cellComment.comments[commentIndex] = comment;
+      cellComment.updatedAt = Date.now();
+      comments[cellCommentIndex] = cellComment;
+      newWorkbook.comments = comments;
+
+      return newWorkbook;
+    });
+  }
+
+  function deleteComment(cellCommentId: string, commentId: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = [...(newWorkbook.comments || [])];
+      const cellCommentIndex = comments.findIndex(c => c.id === cellCommentId);
+
+      if (cellCommentIndex === -1) return prev;
+
+      const cellComment = { ...comments[cellCommentIndex] };
+
+      // Remove comment and all its replies
+      const removeIds = new Set<string>();
+      const findReplies = (parentId: string) => {
+        removeIds.add(parentId);
+        cellComment.comments.forEach((c: Comment) => {
+          if (c.parentId === parentId) findReplies(c.id);
+        });
+      };
+      findReplies(commentId);
+
+      cellComment.comments = cellComment.comments.filter((c: Comment) => !removeIds.has(c.id));
+      cellComment.updatedAt = Date.now();
+
+      // If no comments left, remove the cell comment
+      if (cellComment.comments.length === 0) {
+        newWorkbook.comments = comments.filter(c => c.id !== cellCommentId);
+      } else {
+        comments[cellCommentIndex] = cellComment;
+        newWorkbook.comments = comments;
+      }
+
+      return newWorkbook;
+    });
+  }
+
+  function resolveCellComment(cellCommentId: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = [...(newWorkbook.comments || [])];
+      const cellCommentIndex = comments.findIndex(c => c.id === cellCommentId);
+
+      if (cellCommentIndex === -1) return prev;
+
+      const cellComment = { ...comments[cellCommentIndex] };
+      cellComment.resolved = true;
+      cellComment.updatedAt = Date.now();
+      comments[cellCommentIndex] = cellComment;
+      newWorkbook.comments = comments;
+
+      return newWorkbook;
+    });
+  }
+
+  function unresolveCellComment(cellCommentId: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const comments = [...(newWorkbook.comments || [])];
+      const cellCommentIndex = comments.findIndex(c => c.id === cellCommentId);
+
+      if (cellCommentIndex === -1) return prev;
+
+      const cellComment = { ...comments[cellCommentIndex] };
+      cellComment.resolved = false;
+      cellComment.updatedAt = Date.now();
+      comments[cellCommentIndex] = cellComment;
+      newWorkbook.comments = comments;
+
+      return newWorkbook;
+    });
+  }
+
+  function getCellComment(row: number, col: number, sheetId: string): CellComment | null {
+    return workbook.comments?.find(c => c.row === row && c.col === col && c.sheetId === sheetId) || null;
+  }
+
+  // ==================== Phase 11: Change Tracking ====================
+
+  function toggleChangeTracking() {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking || {
+        enabled: false,
+        changes: [],
+        currentUser: 'User',
+      };
+
+      newWorkbook.changeTracking = {
+        ...tracking,
+        enabled: !tracking.enabled,
+      };
+
+      return newWorkbook;
+    });
+  }
+
+  function addChange(change: Omit<Change, 'id' | 'timestamp'>) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking;
+
+      if (!tracking || !tracking.enabled) return prev;
+
+      const newChange: Change = {
+        ...change,
+        id: `change-${Date.now()}`,
+        timestamp: Date.now(),
+      };
+
+      newWorkbook.changeTracking = {
+        ...tracking,
+        changes: [...tracking.changes, newChange],
+      };
+
+      return newWorkbook;
+    });
+  }
+
+  function acceptChange(changeId: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking;
+
+      if (!tracking) return prev;
+
+      const changes = [...tracking.changes];
+      const changeIndex = changes.findIndex(c => c.id === changeId);
+
+      if (changeIndex === -1) return prev;
+
+      changes[changeIndex] = { ...changes[changeIndex], accepted: true };
+      newWorkbook.changeTracking = { ...tracking, changes };
+
+      return newWorkbook;
+    });
+  }
+
+  function rejectChange(changeId: string) {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking;
+
+      if (!tracking) return prev;
+
+      const changes = [...tracking.changes];
+      const changeIndex = changes.findIndex(c => c.id === changeId);
+
+      if (changeIndex === -1) return prev;
+
+      changes[changeIndex] = { ...changes[changeIndex], rejected: true };
+      newWorkbook.changeTracking = { ...tracking, changes };
+
+      return newWorkbook;
+    });
+  }
+
+  function acceptAllChanges() {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking;
+
+      if (!tracking) return prev;
+
+      const changes = tracking.changes.map((c: Change) =>
+        !c.accepted && !c.rejected ? { ...c, accepted: true } : c
+      );
+
+      newWorkbook.changeTracking = { ...tracking, changes };
+      return newWorkbook;
+    });
+  }
+
+  function rejectAllChanges() {
+    setWorkbook(prev => {
+      const newWorkbook = { ...prev };
+      const tracking = newWorkbook.changeTracking;
+
+      if (!tracking) return prev;
+
+      const changes = tracking.changes.map((c: Change) =>
+        !c.accepted && !c.rejected ? { ...c, rejected: true } : c
+      );
+
+      newWorkbook.changeTracking = { ...tracking, changes };
+      return newWorkbook;
+    });
+  }
 }

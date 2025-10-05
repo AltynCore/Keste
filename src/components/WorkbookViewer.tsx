@@ -14,6 +14,8 @@ import { ChartRenderer } from './ChartRenderer';
 import { FormulaLibrary } from './FormulaLibrary';
 import { NameManager } from './NameManager';
 import { PerformanceMonitor } from './PerformanceMonitor';
+import { CommentPanel } from './CommentPanel';
+import { ChangeTracker } from './ChangeTracker';
 import { generateSqlDump } from '../core-ts/sql_dump';
 import { createXlsxBlob } from '../core-ts/write_xlsx';
 import { useToast } from './ui/use-toast';
@@ -41,6 +43,8 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [nameManagerOpen, setNameManagerOpen] = useState(false);
   const [showFormulas, setShowFormulas] = useState(false);
   const [perfMonitorOpen, setPerfMonitorOpen] = useState(false);
+  const [commentPanelOpen, setCommentPanelOpen] = useState(false);
+  const [changeTrackerOpen, setChangeTrackerOpen] = useState(false);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -85,6 +89,17 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     recalculate,
     canUndo,
     canRedo,
+    addCellComment,
+    addCommentToThread,
+    editComment,
+    deleteComment,
+    resolveCellComment,
+    unresolveCellComment,
+    toggleChangeTracking,
+    acceptChange,
+    rejectChange,
+    acceptAllChanges,
+    rejectAllChanges,
   } = useSpreadsheetEditor(initialWorkbook);
 
   const currentSheet = workbook.sheets[selectedSheetIndex];
@@ -492,6 +507,21 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
     });
   };
 
+  // Phase 11: Change tracking handlers
+  const handleNavigateToChange = (change: any) => {
+    if (change.location?.row && change.location?.col) {
+      setSelectedCell({
+        row: change.location.row,
+        col: change.location.col,
+        sheetId: change.sheetId,
+      });
+    }
+    toast({
+      title: "Navigated to Change",
+      description: change.description,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Excel-like Ribbon */}
@@ -542,6 +572,12 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           lastSave: autoSave.lastSaveTime,
           isSaving: autoSave.isSaving,
         }}
+        onComments={() => setCommentPanelOpen(true)}
+        onChangeTracking={() => setChangeTrackerOpen(true)}
+        commentsCount={workbook.comments?.filter((c: any) => !c.resolved).length || 0}
+        changesCount={
+          workbook.changeTracking?.changes.filter((c: any) => !c.accepted && !c.rejected).length || 0
+        }
       />
 
       {/* Formula Bar - Excel position */}
@@ -712,6 +748,57 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
       <PerformanceMonitor
         open={perfMonitorOpen}
         onOpenChange={setPerfMonitorOpen}
+      />
+
+      {/* Phase 11: Comment Panel */}
+      <CommentPanel
+        open={commentPanelOpen}
+        onOpenChange={setCommentPanelOpen}
+        comments={workbook.comments || []}
+        currentUser="Current User"
+        sheets={workbook.sheets.map(s => ({ id: s.id, name: s.name }))}
+        onAddComment={(cellComment, parentId, content) => {
+          if (parentId) {
+            addCommentToThread(cellComment.id, parentId, 'Current User', content);
+          } else {
+            addCellComment(cellComment.row, cellComment.col, cellComment.sheetId, 'Current User', content);
+          }
+        }}
+        onEditComment={(cellComment, commentId, newContent) =>
+          editComment(cellComment.id, commentId, newContent)
+        }
+        onDeleteComment={(cellComment, commentId) =>
+          deleteComment(cellComment.id, commentId)
+        }
+        onResolveComment={resolveCellComment}
+        onUnresolveComment={unresolveCellComment}
+        onNavigateToCell={(sheetId, row, col) => {
+          const sheetIndex = workbook.sheets.findIndex(s => s.id === sheetId);
+          if (sheetIndex !== -1) {
+            setSelectedSheetIndex(sheetIndex);
+            setSelectedCell({ row, col, sheetId });
+          }
+        }}
+      />
+
+      {/* Phase 11: Change Tracker */}
+      <ChangeTracker
+        open={changeTrackerOpen}
+        onOpenChange={setChangeTrackerOpen}
+        trackingState={
+          workbook.changeTracking || {
+            enabled: false,
+            changes: [],
+            currentUser: 'Current User',
+          }
+        }
+        sheets={workbook.sheets.map(s => ({ id: s.id, name: s.name }))}
+        onToggleTracking={toggleChangeTracking}
+        onAcceptChange={acceptChange}
+        onRejectChange={rejectChange}
+        onAcceptAllChanges={acceptAllChanges}
+        onRejectAllChanges={rejectAllChanges}
+        onNavigateToChange={handleNavigateToChange}
       />
     </div>
   );

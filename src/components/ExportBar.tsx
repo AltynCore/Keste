@@ -1,4 +1,4 @@
-import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3, Code2, BookmarkPlus, Eye, Activity, Calculator, Clock } from 'lucide-react';
+import { Save, Download, FileSpreadsheet, Home, Loader2, Undo, Redo, Type, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, Palette, Search, Shield, Combine, ArrowDownToLine, ArrowRightToLine, Trash2, BarChart3, Code2, BookmarkPlus, Eye, Activity, Calculator, Clock, MessageSquare, History } from 'lucide-react';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -50,6 +50,10 @@ interface ExportBarProps {
   manualCalc?: boolean;
   onRecalculate?: () => void;
   autoSaveStatus?: { enabled: boolean; lastSave: number | null; isSaving: boolean };
+  onComments?: () => void;
+  onChangeTracking?: () => void;
+  commentsCount?: number;
+  changesCount?: number;
 }
 
 function ExportBar({
@@ -95,6 +99,10 @@ function ExportBar({
   manualCalc = false,
   onRecalculate,
   autoSaveStatus,
+  onComments,
+  onChangeTracking,
+  commentsCount = 0,
+  changesCount = 0,
 }: ExportBarProps) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -681,6 +689,65 @@ function ExportBar({
               </TooltipContent>
             </Tooltip>
           )}
+        </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Phase 11: Collaboration Tools */}
+        <div className="flex items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 relative"
+                onClick={onComments}
+                disabled={!onComments}
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                {commentsCount && commentsCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {commentsCount > 9 ? '9+' : commentsCount}
+                  </span>
+                ) : null}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Comments</div>
+                <div className="text-xs opacity-70">
+                  {commentsCount || 0} comment{commentsCount !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 relative"
+                onClick={onChangeTracking}
+                disabled={!onChangeTracking}
+              >
+                <History className="h-3.5 w-3.5" />
+                {changesCount && changesCount > 0 ? (
+                  <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                    {changesCount > 9 ? '9+' : changesCount}
+                  </span>
+                ) : null}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="text-center">
+                <div className="font-semibold">Change Tracking</div>
+                <div className="text-xs opacity-70">
+                  {changesCount || 0} pending change{changesCount !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Progress */}
