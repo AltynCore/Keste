@@ -36,7 +36,7 @@ npm run tauri:build
 2. **Rust** (установка через [rustup](https://rustup.rs/))
 3. **Зависимости системы**:
    - Windows: Visual Studio Build Tools или MinGW
-   - Linux: `libwebkit2gtk-4.1-dev` (Ubuntu 24.04) или `libwebkit2gtk-4.0-dev` (Ubuntu ≤22.04), `libsoup2.4-dev`, `build-essential`, `curl`, `wget`, `pkg-config`, `libssl-dev`, `libgtk-3-dev`, `libglib2.0-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `patchelf`
+   - Linux: `libwebkit2gtk-4.1-dev`/`libjavascriptcoregtk-4.1-dev` (Ubuntu 24.04) или `libwebkit2gtk-4.0-dev`/`libjavascriptcoregtk-4.0-dev` (Ubuntu ≤22.04), `libsoup2.4-dev`, `build-essential`, `curl`, `wget`, `pkg-config`, `libssl-dev`, `libgtk-3-dev`, `libglib2.0-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, `patchelf`
    - macOS: Xcode Command Line Tools
 
 ## Оптимизация размера
