@@ -58,9 +58,11 @@ npm run tauri:build
 3. Очистите кэш сборки: `cd src-tauri && cargo clean`
 4. Проверьте логи в процессе сборки
 
-## Дистрибуция
+## CI/CD релизы по тегам
 
-Для распространения приложения рекомендуется использовать:
-- **Windows**: `Keste.exe` (standalone) или `Keste_0.1.0_x64-setup.exe` (инсталлятор)
-- **macOS**: `.dmg` файл
-- **Linux**: `.AppImage` (наиболее универсальный формат)
+Готовые сборки публикуются автоматически по тегам `v*` через GitHub Actions:
+- Windows: NSIS инсталлятор (`.exe`)
+- macOS: `.app` и `.dmg`
+- Linux: `.AppImage`
+
+Артефакты собираются без подписания (unsigned) и прикрепляются к GitHub Release.

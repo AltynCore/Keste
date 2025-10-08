@@ -4,9 +4,11 @@
 
 A beautiful, fast, and private alternative to Google Sheets that runs completely offline on your desktop.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 ![Version](https://img.shields.io/badge/version-0.1.0-green.svg)
+![CI](https://github.com/AltynCore/Keste/actions/workflows/ci.yml/badge.svg)
+![Release](https://img.shields.io/github/v/release/AltynCore/Keste)
 
 ---
 
@@ -278,7 +280,14 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📝 License
 
-This project is licensed under the MIT License.
+Licensed under the Business Source License 1.1 (BSL 1.1) by ТОО "AltynCore".
+
+Summary of Additional Use Grant:
+- Non-commercial use allowed (incl. internal evaluation/education)
+- Non-commercial production use permitted for up to 5 users/org
+- No offering as a hosted service (SaaS) to third parties
+
+Change Date: 4 years after first public release of each version, after which the version becomes available under GPL-3.0-or-later.
 
 ---
 

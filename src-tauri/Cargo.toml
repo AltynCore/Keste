@@ -2,10 +2,10 @@
 name = "keste"
 version = "0.1.0"
 description = "Modern spreadsheet editor powered by SQLite"
-authors = ["Keste Team"]
-license = "MIT"
-repository = "https://github.com/yourusername/keste"
-edition = "2021"
+authors = ["AltynCore Team"]
+license = "BUSL-1.1"
+repository = "https://github.com/AltynCore/Keste"
+edition = "2025"
 
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }
