@@ -66,5 +66,6 @@ jobs:
           tauri-json-path: src-tauri/tauri.conf.json
           includeDebug: false
           includeUpdaterJson: false
+          iconPath: src-tauri/icons/icon.ico
 
 
