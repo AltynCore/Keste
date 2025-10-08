@@ -60,7 +60,7 @@ npm run tauri:build
 
 ## CI/CD релизы по тегам
 
-Готовые сборки публикуются автоматически по тегам `v*` через GitHub Actions:
+Готовые сборки публикуются автоматически по тегам `v*` через GitHub Actions (Linux раннер: Ubuntu 22.04 для совместимости с WebKitGTK 4.0/JSCore 4.0):
 - Windows: NSIS инсталлятор (`.exe`)
 - macOS: `.app` и `.dmg`
 - Linux: `.AppImage`
