@@ -5,7 +5,7 @@ description = "Modern spreadsheet editor powered by SQLite"
 authors = ["AltynCore Team"]
 license = "BUSL-1.1"
 repository = "https://github.com/AltynCore/Keste"
-edition = "2025"
+edition = "2024"
 
 [build-dependencies]
 tauri-build = { version = "1.5", features = [] }
