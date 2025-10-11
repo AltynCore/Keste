@@ -199,7 +199,9 @@ export function EditableGridView({
     }
 
     // НОВОЕ: Разрешаем стиль через style-resolver
-    const cellStyle = cellData ? resolveCellStyle(cellData, workbook) : undefined;
+    const cellStyle = cellData
+      ? cellData.style || resolveCellStyle(cellData, workbook)
+      : undefined;
 
     // Build custom style object with borders
     const customStyle: React.CSSProperties = {
@@ -228,6 +230,23 @@ export function EditableGridView({
       customStyle.gridColumn = `span ${mergedSize.colSpan}`;
       customStyle.gridRow = `span ${mergedSize.rowSpan}`;
       customStyle.zIndex = 10; // Поверх других ячеек
+
+      // react-window использует абсолютное позиционирование и фиксированную ширину/высоту
+      // Поэтому для merged cells необходимо вручную скорректировать размеры
+      const baseWidth = typeof style.width === 'number'
+        ? style.width
+        : parseFloat(String(style.width));
+      const baseHeight = typeof style.height === 'number'
+        ? style.height
+        : parseFloat(String(style.height));
+
+      if (!Number.isNaN(baseWidth)) {
+        customStyle.width = baseWidth * mergedSize.colSpan;
+      }
+
+      if (!Number.isNaN(baseHeight)) {
+        customStyle.height = baseHeight * mergedSize.rowSpan;
+      }
     }
 
     // Apply borders if present
