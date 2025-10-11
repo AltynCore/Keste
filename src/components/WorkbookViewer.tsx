@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/tauri';
 import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
@@ -45,6 +45,8 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   const [perfMonitorOpen, setPerfMonitorOpen] = useState(false);
   const [commentPanelOpen, setCommentPanelOpen] = useState(false);
   const [changeTrackerOpen, setChangeTrackerOpen] = useState(false);
+  const [savePath, setSavePath] = useState<string | null>(null);
+  const [autoSavePath, setAutoSavePath] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Use spreadsheet editor hook
@@ -112,12 +114,104 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   // Initialize data management hook
   const dataManagement = useDataManagement(currentSheet?.id || '');
 
+  const resolveSavePath = useCallback(
+    async (auto: boolean) => {
+      if (!auto && savePath) {
+        return savePath;
+      }
+
+      if (auto) {
+        if (savePath) {
+          return savePath;
+        }
+
+        if (autoSavePath) {
+          return autoSavePath;
+        }
+
+        const generatedPath = await invoke<string>('get_auto_save_path');
+        setAutoSavePath(generatedPath);
+        return generatedPath;
+      }
+
+      const chosenPath = await invoke<string>('choose_save_file', {
+        defaultName: 'spreadsheet.kst',
+      });
+      setSavePath(chosenPath);
+      return chosenPath;
+    },
+    [autoSavePath, savePath]
+  );
+
+  const performSave = useCallback(
+    async (isAuto: boolean) => {
+      const showProgress = !isAuto;
+
+      if (showProgress) {
+        setExporting(true);
+        setProgress(10);
+      }
+
+      try {
+        if (showProgress) {
+          setProgress(30);
+        }
+
+        let sqlDump = '';
+        for await (const chunk of generateSqlDump(workbook)) {
+          sqlDump += chunk;
+        }
+
+        if (showProgress) {
+          setProgress(50);
+        }
+
+        const targetPath = await resolveSavePath(isAuto);
+
+        if (showProgress) {
+          setProgress(70);
+        }
+
+        const result = await invoke<{ bytes_written: number }>('save_sqlite', {
+          request: {
+            sql_dump: sqlDump,
+            out_path: targetPath,
+          },
+        });
+
+        if (!isAuto) {
+          setProgress(100);
+          toast({
+            title: "Saved successfully!",
+            description: `Keste file saved: ${(result.bytes_written / 1024).toFixed(2)} KB`,
+          });
+        }
+      } catch (err) {
+        if (isAuto) {
+          throw err;
+        }
+
+        toast({
+          variant: "destructive",
+          title: "Save failed",
+          description: String(err),
+        });
+      } finally {
+        if (showProgress) {
+          setExporting(false);
+          setProgress(0);
+        }
+      }
+    },
+    [resolveSavePath, toast, workbook]
+  );
+
   // Phase 10: Auto-save hook
   const autoSave = useAutoSave({
     enabled: true,
     interval: 30000, // 30 seconds
     onSave: async () => {
-      await handleSaveKst();
+      await performSave(true);
     },
     onError: (error) => {
       toast({
@@ -302,51 +396,7 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
   }, [selectedCell, editingState, startEditing, setCellValue, handleUndo, handleRedo, handleCopy, handleCut, handlePaste]);
 
   const handleSaveKst = async () => {
-    setExporting(true);
-    setProgress(10);
-
-    try {
-      // Generate SQL dump
-      let sqlDump = '';
-      setProgress(30);
-
-      for await (const chunk of generateSqlDump(workbook)) {
-        sqlDump += chunk;
-      }
-
-      setProgress(50);
-
-      // Choose save location
-      const outPath = await invoke<string>('choose_save_file', {
-        defaultName: 'spreadsheet.kst',
-      });
-
-      setProgress(70);
-
-      // Save .kst file (SQLite format)
-      const result = await invoke<{ bytes_written: number }>('save_sqlite', {
-        request: {
-          sql_dump: sqlDump,
-          out_path: outPath,
-        },
-      });
-
-      setProgress(100);
-
-      toast({
-        title: "Saved successfully!",
-        description: `Keste file saved: ${(result.bytes_written / 1024).toFixed(2)} KB`,
-      });
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Save failed",
-        description: String(err),
-      });
-    } finally {
-      setExporting(false);
-      setProgress(0);
-    }
+    await performSave(false);
   };
 
   const handleExportExcel = async () => {

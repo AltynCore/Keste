@@ -1,5 +1,5 @@
 use rusqlite::{Connection, Result};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CellData {
@@ -31,14 +31,13 @@ pub fn read_sqlite(file_path: &str) -> Result<String, Box<dyn std::error::Error>
     let conn = Connection::open(file_path)?;
 
     // Read workbook metadata
-    let workbook_id: String = conn.query_row(
-        "SELECT id FROM workbook LIMIT 1",
-        [],
-        |row| row.get(0)
-    ).unwrap_or_else(|_| "workbook-1".to_string());
+    let workbook_id: String = conn
+        .query_row("SELECT id FROM workbook LIMIT 1", [], |row| row.get(0))
+        .unwrap_or_else(|_| "workbook-1".to_string());
 
     // Read all sheets
-    let mut sheet_stmt = conn.prepare("SELECT id, name, sheet_order FROM sheet ORDER BY sheet_order")?;
+    let mut sheet_stmt =
+        conn.prepare("SELECT id, name, sheet_order FROM sheet ORDER BY sheet_order")?;
     let sheets_iter = sheet_stmt.query_map([], |row| {
         Ok((
             row.get::<_, String>(0)?,
@@ -48,18 +47,18 @@ pub fn read_sqlite(file_path: &str) -> Result<String, Box<dyn std::error::Error>
     })?;
 
     let mut sheets = Vec::new();
-    
+
     for sheet_result in sheets_iter {
         let (sheet_id, sheet_name, sheet_order) = sheet_result?;
-        
+
         // Read cells for this sheet
         let mut cell_stmt = conn.prepare(
             "SELECT row, col, type, value, formula, style_id 
              FROM cell 
              WHERE sheet_id = ?1 
-             ORDER BY row, col"
+             ORDER BY row, col",
         )?;
-        
+
         let cells_iter = cell_stmt.query_map([&sheet_id], |row| {
             Ok(CellData {
                 row: row.get(0)?,
