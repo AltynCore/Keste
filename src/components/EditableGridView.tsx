@@ -199,7 +199,9 @@ export function EditableGridView({
     }
 
     // НОВОЕ: Разрешаем стиль через style-resolver
-    const cellStyle = cellData ? resolveCellStyle(cellData, workbook) : undefined;
+    const cellStyle = cellData
+      ? cellData.style || resolveCellStyle(cellData, workbook)
+      : undefined;
 
     // Build custom style object with borders
     const customStyle: React.CSSProperties = {
