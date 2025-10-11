@@ -12,6 +12,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
     position: null,
     value: '',
     originalValue: '',
+    source: 'cell',
   });
   const [selectedCell, setSelectedCell] = useState<CellPosition | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -264,14 +265,34 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
   }, [getCellValue]);
 
   // Start editing
-  const startEditing = useCallback((position: CellPosition, initialValue?: string) => {
+  const startEditing = useCallback((
+    position: CellPosition,
+    initialValue?: string,
+    source: 'cell' | 'formulaBar' = 'cell',
+  ) => {
     const currentValue = getCellValue(position);
-    const value = initialValue !== undefined ? initialValue : currentValue;
-    setEditingState({
-      isEditing: true,
-      position,
-      value,
-      originalValue: currentValue, // Keep original for undo
+    setEditingState(prev => {
+      const isSameCell =
+        prev.position?.row === position.row &&
+        prev.position?.col === position.col &&
+        prev.position?.sheetId === position.sheetId;
+
+      const value =
+        initialValue !== undefined
+          ? initialValue
+          : isSameCell
+            ? prev.value
+            : currentValue;
+
+      const originalValue = isSameCell ? prev.originalValue : currentValue;
+
+      return {
+        isEditing: true,
+        position,
+        value,
+        originalValue,
+        source,
+      };
     });
     setSelectedCell(position);
   }, [getCellValue]);
@@ -289,6 +310,7 @@ export function useSpreadsheetEditor(initialWorkbook: WorkbookModel) {
       position: null,
       value: '',
       originalValue: '',
+      source: 'cell',
     });
   }, [editingState, setCellValue]);
 

@@ -617,7 +617,12 @@ function WorkbookViewer({ workbook: initialWorkbook, onClose }: WorkbookViewerPr
           onChange={updateEditingValue}
           onFocus={() => {
             if (selectedCell) {
-              startEditing(selectedCell);
+              startEditing(selectedCell, undefined, 'formulaBar');
+            }
+          }}
+          onBlur={() => {
+            if (editingState.isEditing) {
+              stopEditing(true);
             }
           }}
         />

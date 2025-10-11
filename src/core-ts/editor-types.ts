@@ -11,6 +11,7 @@ export interface EditingState {
   position: CellPosition | null;
   value: string;
   originalValue: string;
+  source: 'cell' | 'formulaBar';
 }
 
 export interface Selection {
