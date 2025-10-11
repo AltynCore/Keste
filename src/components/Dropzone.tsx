@@ -157,6 +157,33 @@ function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
     }
   }, [handleFile, onError]);
 
+  const handleRecentFileClick = useCallback(
+    async (file: RecentFile) => {
+      if (!file.path) {
+        onError('File path is unavailable. Please locate the file manually.');
+        return;
+      }
+
+      try {
+        if (file.type === 'kst') {
+          const placeholderFile = new File([], file.name);
+          await handleFile(placeholderFile, file.path);
+        } else {
+          const response = await fetch(`file://${file.path}`);
+          if (!response.ok) {
+            throw new Error('Failed to access the recent file');
+          }
+          const blob = await response.blob();
+          const recentFile = new File([blob], file.name);
+          await handleFile(recentFile, file.path);
+        }
+      } catch (err) {
+        onError(err instanceof Error ? err.message : 'Failed to open recent file');
+      }
+    },
+    [handleFile, onError]
+  );
+
   const handleNewSpreadsheet = useCallback(() => {
     // Create empty workbook
     const emptyWorkbook: WorkbookModel = {
@@ -298,7 +325,7 @@ function Dropzone({ onFileLoad, onError, loading, setLoading }: DropzoneProps) {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.5 + i * 0.05 }}
-                      onClick={() => handleOpenFile()}
+                      onClick={() => handleRecentFileClick(file)}
                       className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-accent/50 transition-colors text-left group"
                     >
                       <FileSpreadsheet className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
