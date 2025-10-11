@@ -12,6 +12,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             cmds::choose_open_file,
             cmds::choose_save_file,
+            cmds::get_auto_save_path,
             cmds::save_sqlite,
             cmds::read_sqlite
         ])

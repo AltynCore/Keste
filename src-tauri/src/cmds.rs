@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
-use tauri::api::dialog::blocking::FileDialogBuilder;
+use std::{fs, path::PathBuf};
+use tauri::api::{
+    dialog::blocking::FileDialogBuilder,
+    path::{cache_dir, data_dir},
+};
 
 #[derive(Serialize)]
 pub struct SaveResult {
@@ -30,6 +34,23 @@ pub fn choose_save_file(default_name: String) -> Result<String, String> {
         .save_file()
         .map(|path| path.to_string_lossy().to_string())
         .ok_or_else(|| "No file selected".to_string())
+}
+
+#[tauri::command]
+pub fn get_auto_save_path() -> Result<String, String> {
+    let mut base_dir: PathBuf = cache_dir()
+        .or_else(data_dir)
+        .unwrap_or_else(std::env::temp_dir);
+
+    base_dir.push("Keste");
+    base_dir.push("AutoSave");
+
+    fs::create_dir_all(&base_dir)
+        .map_err(|e| format!("Failed to create auto-save directory: {}", e))?;
+
+    base_dir.push("autosave.kst");
+
+    Ok(base_dir.to_string_lossy().to_string())
 }
 
 #[derive(Deserialize)]
