@@ -175,6 +175,7 @@ export function EditableGridView({
       editingState.position?.row === rowIndex &&
       editingState.position?.col === columnIndex &&
       editingState.position?.sheetId === sheet.id;
+    const isEditingInCell = isEditing && editingState.source === 'cell';
 
     // ===== MERGED CELLS LOGIC =====
     // Проверяем, нужно ли скрыть эту ячейку (она в merged range, но не master)
@@ -291,7 +292,7 @@ export function EditableGridView({
       customStyle.borderLeft = `${borderWidth} ${borderStyle} ${cellStyle.borderLeft.color || '#000000'}`;
     }
 
-    if (isEditing) {
+    if (isEditingInCell) {
       return (
         <div
           style={customStyle}

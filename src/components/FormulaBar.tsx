@@ -7,6 +7,7 @@ interface FormulaBarProps {
   isEditing: boolean;
   onChange: (value: string) => void;
   onFocus: () => void;
+  onBlur?: () => void;
 }
 
 export function FormulaBar({
@@ -15,6 +16,7 @@ export function FormulaBar({
   isEditing,
   onChange,
   onFocus,
+  onBlur,
 }: FormulaBarProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value);
@@ -47,6 +49,7 @@ export function FormulaBar({
           value={value}
           onChange={handleChange}
           onFocus={onFocus}
+          onBlur={onBlur}
           onKeyDown={handleKeyDown}
           placeholder="Enter value or formula (=SUM(A1:A10))"
           className={cn(
